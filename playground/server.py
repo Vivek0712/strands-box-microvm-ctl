@@ -7,11 +7,19 @@ The same `Playground.api(method, path, query, body)` serves the local HTTP serve
 Function URL behind CloudFront (`lambda_handler`). Every call is short: launches return at once and the
 page polls, so nothing needs a background thread that outlives a request.
 
-Guardrails, whatever the page asks for: at most SBX_MAX_VMS microVMs of the image at once, every launch
-carries an idle policy (suspend after 5 minutes without traffic, terminate after 15 minutes suspended)
-and a 30 minute lifetime cap, and a fan-out is capped at SBX_MAX_TASKS tasks.
+Guardrails, whatever the page asks for, each set by an environment variable:
 
-When PLAYGROUND_KEY is set, every /api call must carry it in the x-playground-key header.
+    SBX_MAX_VMS               microVMs of the image active at once (default 8)
+    SBX_LAUNCHES_PER_HOUR     launches of the image in any rolling hour, counted from ListMicrovms (0 = no cap)
+    SBX_MAX_DURATION_S        lifetime cap on every launch (default 1800)
+    SBX_IDLE_S                suspend after this long without endpoint traffic (default 300)
+    SBX_MAX_TASKS             tasks in one fan-out (default 256)
+    SBX_ALLOW_MODEL           "0" turns off the model-driven agent
+    PLAYGROUND_KEY            when set, every /api call except GET /api/policy and /api/benchmarks needs it
+                              in the x-playground-key header
+
+Every request that names a microVM is checked against the image's own VMs, so the key never reaches a VM
+of another image in the account. Steps, prompts and files are size-capped before they reach a VM.
 """
 
 from __future__ import annotations
@@ -39,9 +47,14 @@ REPO = os.path.dirname(HERE)
 IMAGE = os.environ.get("SBX_IMAGE", "strands-box")
 MAX_VMS = int(os.environ.get("SBX_MAX_VMS", "8"))
 MAX_TASKS = int(os.environ.get("SBX_MAX_TASKS", "256"))
+LAUNCHES_PER_HOUR = int(os.environ.get("SBX_LAUNCHES_PER_HOUR", "0"))
+ALLOW_MODEL = os.environ.get("SBX_ALLOW_MODEL", "1") == "1"
+MAX_STEPS, MAX_STEP_CHARS, MAX_PROMPT_CHARS = 12, 300, 500
+MAX_FILES, MAX_FILE_CHARS = 5, 8192
+PUBLIC_ROUTES = {("GET", "/api/policy"), ("GET", "/api/benchmarks")}
 BASELINE_MIB = int(os.environ.get("SBX_BASELINE_MIB", "1024"))
-IDLE = IdlePolicy(max_idle=300, suspended_for=900, auto_resume=True)
-MAX_DURATION = 1800
+IDLE = IdlePolicy(max_idle=int(os.environ.get("SBX_IDLE_S", "300")), suspended_for=900, auto_resume=True)
+MAX_DURATION = int(os.environ.get("SBX_MAX_DURATION_S", "1800"))
 STATIC = os.environ.get("SBX_STATIC", os.path.join(HERE, "static"))
 BOX_FILES = os.environ.get("SBX_BOX_FILES", os.path.join(REPO, "image", "box"))
 RESULTS = os.environ.get("SBX_RESULTS", os.path.join(REPO, "results"))
@@ -143,6 +156,50 @@ class Playground:
             self._rr += 1
             return ids[self._rr % len(ids)]
 
+    def launches_last_hour(self) -> int:
+        cutoff = time.time() - 3600
+        return sum(1 for vm in self.fm.list(IMAGE) if vm.started_epoch and vm.started_epoch > cutoff)
+
+    def budget(self, want: int) -> int:
+        """How many of `want` launches the rolling hourly budget allows; raises when it allows none."""
+        if not LAUNCHES_PER_HOUR:
+            return want
+        left = LAUNCHES_PER_HOUR - self.launches_last_hour()
+        if left <= 0:
+            raise PermissionError(f"the playground allows {LAUNCHES_PER_HOUR} launches an hour and they are used; "
+                                  "try again later or run a task on a VM that is already up")
+        return min(want, left)
+
+    def own(self, microvm_id: str) -> str:
+        if not microvm_id or not any(v["microvmId"] == microvm_id for v in self.vms()):
+            raise PermissionError(f"{microvm_id!r} is not an active {IMAGE} microVM")
+        return microvm_id
+
+    @staticmethod
+    def check_task(body: dict) -> dict:
+        steps, prompt, files = body.get("steps"), body.get("prompt"), body.get("files")
+        out = {}
+        if steps:
+            if not isinstance(steps, list) or len(steps) > MAX_STEPS or \
+                    any(not isinstance(x, str) or len(x) > MAX_STEP_CHARS for x in steps):
+                raise ValueError(f"steps: at most {MAX_STEPS}, each a string of at most {MAX_STEP_CHARS} characters")
+            out["steps"] = steps
+        if prompt:
+            if not ALLOW_MODEL:
+                raise PermissionError("the model-driven agent is turned off on this playground")
+            if not isinstance(prompt, str) or len(prompt) > MAX_PROMPT_CHARS:
+                raise ValueError(f"prompt: at most {MAX_PROMPT_CHARS} characters")
+            out["prompt"] = prompt
+        if files:
+            if not isinstance(files, dict) or len(files) > MAX_FILES or any(
+                    not isinstance(k, str) or len(k) > 100 or not isinstance(v, str) or len(v) > MAX_FILE_CHARS
+                    for k, v in files.items()):
+                raise ValueError(f"files: at most {MAX_FILES}, paths up to 100 characters, {MAX_FILE_CHARS} characters each")
+            out["files"] = files
+        if not out.get("steps") and not out.get("prompt"):
+            raise ValueError("add at least one step, or a prompt")
+        return out
+
     def active_count(self) -> int:
         return sum(1 for v in self.vms() if v["state"] in ("PENDING", "RUNNING", "SUSPENDING", "SUSPENDED"))
 
@@ -165,7 +222,9 @@ class Playground:
                      "launch_tps": self.fm.tps("RunMicrovm"), "memory_quota_gb": self.fm.memory_quota_gb,
                      "baseline_mib": BASELINE_MIB, "presets": PRESETS,
                      "guardrails": {"max_idle_s": IDLE.max_idle, "suspended_for_s": IDLE.suspended_for,
-                                    "max_duration_s": MAX_DURATION}}
+                                    "max_duration_s": MAX_DURATION, "launches_per_hour": LAUNCHES_PER_HOUR,
+                                    "launches_last_hour": self.launches_last_hour() if LAUNCHES_PER_HOUR else None,
+                                    "allow_model": ALLOW_MODEL}}
 
     def list_vms(self, _q, _b):
         return 200, {"vms": self.vms()}
@@ -175,7 +234,7 @@ class Playground:
         room = MAX_VMS - self.active_count()
         if room <= 0:
             return 409, {"error": f"the playground caps {IMAGE} at {MAX_VMS} microVMs; terminate some first"}
-        n = min(n, room)
+        n = self.budget(min(n, room))
         t0 = time.time()
         with ThreadPoolExecutor(max_workers=min(n, 8)) as pool:
             vms = list(pool.map(lambda _i: self.fm.run(IMAGE, idle_policy=IDLE, max_duration=MAX_DURATION),
@@ -184,6 +243,7 @@ class Playground:
                      "capped": n < int(body.get("count", 1))}
 
     def lifecycle(self, microvm_id: str, verb: str):
+        self.own(microvm_id)
         t0 = time.time()
         getattr(self.fm, verb)(microvm_id)
         if verb == "terminate":
@@ -195,6 +255,9 @@ class Playground:
         t0 = time.time()
         if action == "scale":
             n = max(0, min(int(body.get("n", 0)), MAX_VMS))
+            grow = n - self.active_count()
+            if grow > 0:
+                n = self.active_count() + self.budget(grow)
             launched = self.fleet.scale_to(n)
             result = {"desired": n, "launched": [v.microvm_id for v in launched]}
         elif action == "suspend_all":
@@ -210,28 +273,28 @@ class Playground:
         return 200, result
 
     def vm_info(self, microvm_id: str):
+        self.own(microvm_id)
         status, body, ms = self.call_vm(microvm_id, "GET", "/info", timeout=90)
         return status, {"info": body, "ms": ms}
 
     def vm_status(self, microvm_id: str):
+        self.own(microvm_id)
         t0 = time.time()
         snap = self.client(microvm_id).status()
         self.trace.add("microvm-endpoint", "GET /status", 200, (time.time() - t0) * 1000)
         return 200, snap
 
     def task(self, _q, body):
-        microvm_id = body.get("microvm_id") or self.pick()
-        payload = {k: body[k] for k in ("steps", "prompt", "files") if body.get(k)}
-        if not payload.get("steps") and not payload.get("prompt"):
-            return 400, {"error": "add at least one step, or a prompt"}
+        payload = self.check_task(body)
+        microvm_id = self.own(body["microvm_id"]) if body.get("microvm_id") else self.pick()
         status, result, ms = self.call_vm(microvm_id, "POST", "/task", payload, timeout=180)
         return status, {"microvm_id": microvm_id, "request_ms": ms, "result": result}
 
     def dispatch(self, _q, body):
         n = max(1, min(int(body.get("count", 16)), MAX_TASKS))
         per_vm = max(1, min(int(body.get("per_vm", 4)), 16))
-        steps = body.get("steps") or [p["step"] for p in PRESETS[:5]]
-        bodies = [{"steps": steps + [f"run:echo task {i}"]} for i in range(n)]
+        steps = self.check_task({"steps": body.get("steps")})["steps"] if body.get("steps") else [p["step"] for p in PRESETS[:5]]
+        bodies = [{"steps": steps[:MAX_STEPS - 1] + [f"run:echo task {i}"]} for i in range(n)]
         t0 = time.time()
         results = self.fleet.dispatch("/task", bodies, per_vm=per_vm, timeout=180,
                                       client_factory=lambda vid: self.client(vid))
@@ -275,11 +338,13 @@ class Playground:
     def lease(self, _q, body):
         shards = max(1, min(int(body.get("shards", 2)), MAX_VMS))
         boxes = max(1, min(int(body.get("boxes", 4)), 32))
-        steps = body.get("steps") or [p["step"] for p in PRESETS[:5]]
+        steps = self.check_task({"steps": body.get("steps")})["steps"] if body.get("steps") else [p["step"] for p in PRESETS[:5]]
         room = MAX_VMS - self.active_count()
         if shards > room:
             return 409, {"error": f"{shards} leases need {shards} microVMs and the playground has room for {room}"}
-        policy = LeasePolicy(budget_s=600, heartbeat_timeout_s=120, slack_s=120)
+        if self.budget(shards) < shards:
+            return 429, {"error": f"{shards} leases exceed the launches left in this hour"}
+        policy = LeasePolicy(budget_s=max(60, MAX_DURATION - 120), heartbeat_timeout_s=120, slack_s=60)
         run_id = f"pg-{time.strftime('%H%M%S')}-{random.randint(100, 999)}"
         leases = [Lease(kind="none", token="", region=self.cfg.region, id=f"{run_id}-{i}", heartbeat_s=10)
                   for i in range(shards)]
@@ -355,6 +420,8 @@ class Playground:
             return 404, {"error": f"no route {method} {path}"}
         except ValueError as e:
             return 400, {"error": str(e)}
+        except PermissionError as e:
+            return 429 if "launches" in str(e) else 403, {"error": str(e)}
         except Exception as e:  # surface AWS and endpoint errors to the page as they are
             return 502, {"error": f"{type(e).__name__}: {e}"}
 
@@ -404,7 +471,7 @@ class Handler(BaseHTTPRequestHandler):
             with open(path, "rb") as f:
                 return self._send(200, f.read(), ctype)
         headers = {k.lower(): v for k, v in self.headers.items()}
-        if not authorized(headers):
+        if (method, u.path) not in PUBLIC_ROUTES and not authorized(headers):
             return self._send(401, {"error": "missing or wrong playground key"})
         body = {}
         if method == "POST":
@@ -431,7 +498,7 @@ def lambda_handler(event, _context):
     if origin_secret and not hmac.compare_digest((headers.get("x-origin-verify") or "").encode(), origin_secret.encode()):
         return {"statusCode": 403, "headers": {"content-type": "application/json"},
                 "body": json.dumps({"error": "call the playground through its CloudFront URL"})}
-    if not authorized(headers):
+    if (method, path) not in PUBLIC_ROUTES and not authorized(headers):
         return {"statusCode": 401, "headers": {"content-type": "application/json"},
                 "body": json.dumps({"error": "missing or wrong playground key"})}
     raw = event.get("body") or ""

@@ -1,0 +1,7 @@
+{"Version":"2012-10-17","Statement":[
+ {"Sid":"Logs","Effect":"Allow","Action":["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],
+  "Resource":["arn:aws:logs:us-east-1:643603452951:log-group:/aws/lambda-microvms/*","arn:aws:logs:us-east-1:643603452951:log-group:/aws/lambda/microvms/*"]},
+ {"Sid":"NovaLite","Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],
+  "Resource":["arn:aws:bedrock:*:643603452951:inference-profile/global.amazon.nova-2-lite-v1:0","arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0"]},
+ {"Sid":"BearerKey","Effect":"Allow","Action":"bedrock:CallWithBearerToken","Resource":"*"}
+]}

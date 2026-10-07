@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 image/microvm_hooks.py
 image/box-core/
+media/**/video/

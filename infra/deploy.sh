@@ -16,8 +16,14 @@ secrets="$here/.playground-secrets"
 . "$secrets"
 
 build=$(mktemp -d)
+# microvm-ctl is pure Python; its dependencies come as arm64 wheels for the Lambda runtime.
 pip install --quiet --target "$build" --platform manylinux2014_aarch64 --only-binary=:all: --python-version 3.12 \
-  "microvm-ctl @ file://${MICROVM_CTL_SRC:-$HOME/microvm-ctl}" >/dev/null
+  "requests>=2.31" "rich>=13.7" >/dev/null
+if [ -n "${MICROVM_CTL_SRC:-}" ]; then
+  pip install --quiet --target "$build" --no-deps "$MICROVM_CTL_SRC" >/dev/null
+else
+  pip install --quiet --target "$build" --no-deps "microvm-ctl>=0.4" >/dev/null
+fi
 rm -rf "$build"/boto3 "$build"/botocore "$build"/s3transfer   # the runtime ships them
 cp "$here/playground/server.py" "$build/"
 mkdir -p "$build/static" "$build/box" "$build/results"
@@ -33,7 +39,7 @@ $aws s3 cp --quiet "$build.zip" "s3://$MVM_ARTIFACT_BUCKET/$key"
 $aws cloudformation deploy --stack-name "$stack" --template-file "$here/infra/playground.yaml" \
   --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset --parameter-overrides \
   PlaygroundKey="$PLAYGROUND_KEY" OriginSecret="$ORIGIN_SECRET" CodeBucket="$MVM_ARTIFACT_BUCKET" CodeKey="$key" \
-  VmExecutionRoleArn="$MVM_EXECUTION_ROLE_ARN"
+  VmExecutionRoleArn="$MVM_EXECUTION_ROLE_ARN" ${STACK_OVERRIDES:-}
 out() { $aws cloudformation describe-stacks --stack-name "$stack" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
 $aws s3 cp --quiet "$here/playground/static/index.html" "s3://$(out SiteBucket)/index.html" --content-type "text/html; charset=utf-8" --cache-control "no-cache"
 $aws cloudfront create-invalidation --distribution-id "$(out DistributionId)" --paths "/*" >/dev/null

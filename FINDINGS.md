@@ -73,6 +73,16 @@ The SDK tutorial pins `global.anthropic.claude-opus-5` in `us-west-2`. On an acc
 
 `lease_many` launches one VM per shard, which is right for long tasks. A box takes about 100 ms, a VM launch about 4 s, so for Strands Box the useful shape is many boxes over VMs that are already up. I wrote that by hand in the first fleet scenario, then added it to the plane as `Fleet.dispatch(path, bodies, per_vm=K)` and `mvm dispatch IMAGE /path`: every RUNNING member gets K workers pulling from one queue, results come back in order, and a failed request is recorded without stopping the rest.
 
+## AWS deployment of the playground
+
+### 11. A Lambda Function URL also needs `lambda:InvokeFunction`
+
+With `AuthType: NONE` and only the `lambda:InvokeFunctionUrl` permission, every request through CloudFront and every direct call came back 403 from Lambda with "Forbidden. For troubleshooting Function URL authorization issues". Function URLs created after October 2025 also need `lambda:InvokeFunction` granted to `*` with `InvokedViaFunctionUrl: true`. `infra/playground.yaml` carries both.
+
+### 12. `ReservedConcurrentExecutions` fails on a new account
+
+The account's concurrency limit is 10 and Lambda keeps 10 unreserved, so reserving 4 for the playground failed the stack ("decreases account's UnreservedConcurrentExecution below its minimum value of [10]"). The playground is bounded by WAF rate limits and its own hourly launch budget instead.
+
 ## Lambda MicroVMs
 
 ### 10. The namespace launcher works once the image has the extra capabilities

@@ -29,7 +29,23 @@ Parameters:
     Description: The execution role the strands-box microVMs run with (passed to RunMicrovm).
   MaxVms:
     Type: Number
-    Default: 8
+    Default: 3
+    Description: strands-box microVMs active at once through the playground.
+  LaunchesPerHour:
+    Type: Number
+    Default: 12
+    Description: launches in any rolling hour, counted from ListMicrovms.
+  MaxDurationSeconds:
+    Type: Number
+    Default: 900
+  RequestsPer5MinPerIp:
+    Type: Number
+    Default: 300
+    Description: WAF rate limit on every request from one IP.
+  ApiWritesPer5MinPerIp:
+    Type: Number
+    Default: 60
+    Description: WAF rate limit on POST /api/* from one IP.
 
 Resources:
   SiteBucket:
@@ -104,7 +120,10 @@ Resources:
           MVM_EXECUTION_ROLE_ARN: !Ref VmExecutionRoleArn
           SBX_IMAGE: !Ref ImageName
           SBX_MAX_VMS: !Ref MaxVms
-          SBX_MAX_TASKS: "128"
+          SBX_MAX_TASKS: "48"
+          SBX_LAUNCHES_PER_HOUR: !Ref LaunchesPerHour
+          SBX_MAX_DURATION_S: !Ref MaxDurationSeconds
+          SBX_IDLE_S: "180"
           SBX_STATIC: /var/task/static
           SBX_BOX_FILES: /var/task/box
           SBX_RESULTS: /var/task/results
@@ -125,6 +144,15 @@ Resources:
       Principal: "*"
       FunctionUrlAuthType: NONE
 
+  # Function URLs created after October 2025 also need InvokeFunction, scoped to calls through the URL.
+  ApiUrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
   SiteOac:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
@@ -134,11 +162,64 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub "${AWS::StackName}-acl"
+      Scope: CLOUDFRONT
+      DefaultAction: { Allow: {} }
+      VisibilityConfig: { SampledRequestsEnabled: true, CloudWatchMetricsEnabled: true, MetricName: !Sub "${AWS::StackName}-acl" }
+      Rules:
+        - Name: api-writes-per-ip
+          Priority: 0
+          Action: { Block: {} }
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref ApiWritesPer5MinPerIp
+              AggregateKeyType: IP
+              ScopeDownStatement:
+                AndStatement:
+                  Statements:
+                    - ByteMatchStatement:
+                        FieldToMatch: { UriPath: {} }
+                        PositionalConstraint: STARTS_WITH
+                        SearchString: /api/
+                        TextTransformations: [{ Priority: 0, Type: NONE }]
+                    - ByteMatchStatement:
+                        FieldToMatch: { Method: {} }
+                        PositionalConstraint: EXACTLY
+                        SearchString: POST
+                        TextTransformations: [{ Priority: 0, Type: NONE }]
+          VisibilityConfig: { SampledRequestsEnabled: true, CloudWatchMetricsEnabled: true, MetricName: api-writes-per-ip }
+        - Name: all-requests-per-ip
+          Priority: 1
+          Action: { Block: {} }
+          Statement:
+            RateBasedStatement: { Limit: !Ref RequestsPer5MinPerIp, AggregateKeyType: IP }
+          VisibilityConfig: { SampledRequestsEnabled: true, CloudWatchMetricsEnabled: true, MetricName: all-requests-per-ip }
+        - Name: aws-ip-reputation
+          Priority: 2
+          OverrideAction: { None: {} }
+          Statement:
+            ManagedRuleGroupStatement: { VendorName: AWS, Name: AWSManagedRulesAmazonIpReputationList }
+          VisibilityConfig: { SampledRequestsEnabled: true, CloudWatchMetricsEnabled: true, MetricName: aws-ip-reputation }
+        - Name: aws-common
+          Priority: 3
+          OverrideAction: { None: {} }
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules:
+                - Name: SizeRestrictions_BODY   # a task with files can pass 8 KB; the API caps sizes itself
+          VisibilityConfig: { SampledRequestsEnabled: true, CloudWatchMetricsEnabled: true, MetricName: aws-common }
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Enabled: true
+        WebACLId: !GetAtt WebAcl.Arn
         Comment: Strands Box playground
         DefaultRootObject: index.html
         HttpVersion: http2and3

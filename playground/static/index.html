@@ -234,6 +234,12 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 1
 </header>
 
 <main>
+<div class="callout" id="locked" style="display:none;margin-bottom:16px">
+  <div class="row" style="justify-content:space-between">
+    <span>This playground launches real microVMs in an AWS account, so running anything needs a key. The Benchmarks and Policy tabs are open to everyone.</span>
+    <button class="btn sm primary" id="unlock">Enter key</button>
+  </div>
+</div>
 <!-- RUN -->
 <section class="view active" id="view-run">
   <p class="lede">Every task runs in a fresh Strands Box inside a Lambda MicroVM. The agent gets no grant on the project, so each command and each file it touches goes through Strands Shell, and the Dogwood policy decides. Pick steps, run them, and read every decision the box recorded.</p>
@@ -442,13 +448,21 @@ $("#key-save").onclick = () => { store.set("key", $("#key-input").value.trim());
 $("#key-cancel").onclick = () => { $("#keydlg").close(); keyResolve && keyResolve(false); };
 $("#keybtn").onclick = () => askKey();
 
-async function api(method, path, body) {
+let locked = false;
+function setLocked(v) {
+  locked = v; $("#locked").style.display = v ? "" : "none";
+}
+$("#unlock").onclick = async () => { if (await askKey()) { setLocked(false); await loadOverview(); show(current === "bench" ? "run" : current); } };
+async function api(method, path, body, opts = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const headers = { "content-type": "application/json" };
     const key = store.get("key", "");
     if (key) headers["x-playground-key"] = key;
     const r = await fetch("/api/" + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-    if (r.status === 401 && attempt === 0) { if (await askKey()) continue; }
+    if (r.status === 401) {
+      if (opts.quiet) { setLocked(true); throw new Error("locked"); }
+      if (attempt === 0 && await askKey()) { setLocked(false); continue; }
+    }
     let data; try { data = await r.json(); } catch { data = { error: "HTTP " + r.status }; }
     if (!r.ok) throw new Error(data.error || "HTTP " + r.status);
     return data;
@@ -490,14 +504,19 @@ const files = {};
 
 async function loadOverview() {
   try {
-    overview = await api("GET", "overview");
+    overview = await api("GET", "overview", null, { quiet: true });
     $("#chip-region b").textContent = overview.region;
     const active = overview.versions.find((v) => v.state === "SUCCESSFUL" || v.state === "ACTIVE");
     $("#chip-image b").textContent = overview.image + (active ? " v" + active.version : "");
-    $("#guardrails").textContent = `Guardrails: at most ${overview.max_vms} microVMs; suspend after ${overview.guardrails.max_idle_s / 60} min idle, terminate after ${overview.guardrails.suspended_for_s / 60} min suspended, ${overview.guardrails.max_duration_s / 60} min lifetime cap. RunMicrovm at ${overview.launch_tps}/s, memory quota ${overview.memory_quota_gb ?? "?"} GB.`;
+    const g = overview.guardrails;
+    $("#guardrails").textContent = `Guardrails: at most ${overview.max_vms} microVMs at once` + (g.launches_per_hour ? `, ${g.launches_per_hour} launches an hour (${g.launches_last_hour} used)` : "") + `; suspend after ${Math.round(g.max_idle_s / 60)} min idle, terminate after ${g.suspended_for_s / 60} min suspended, ${g.max_duration_s / 60} min lifetime cap. RunMicrovm at ${overview.launch_tps}/s, memory quota ${overview.memory_quota_gb ?? "?"} GB.`;
+    if (!g.allow_model) { const b = $('.seg button[data-mode="model"]'); b.disabled = true; b.title = "Turned off on this playground"; }
     renderPresets(overview.presets);
     setVms(overview.vms);
-  } catch (e) { toast("Could not load the overview: " + e.message, "bad"); }
+  } catch (e) {
+    if (e.message !== "locked") toast("Could not load the overview: " + e.message, "bad");
+    else { $("#chip-fleet b").textContent = "locked"; $("#chip-region").style.display = $("#chip-image").style.display = "none"; }
+  }
 }
 function setVms(list) {
   vms = list;
@@ -620,7 +639,8 @@ function stat(k, v, s) { return h("div", { class: "stat" }, h("div", { class: "k
 
 /* fleet */
 async function refreshFleet() {
-  try { const r = await api("GET", "vms"); setVms(r.vms); } catch (e) { toast(e.message, "bad"); }
+  if (locked) return;
+  try { const r = await api("GET", "vms", null, { quiet: true }); setVms(r.vms); } catch (e) { if (e.message !== "locked") toast(e.message, "bad"); }
 }
 function renderFleetTable() {
   const tb = $("#fleet-table tbody");
@@ -783,7 +803,7 @@ async function loadTrace() {
       h("td", { style: "text-align:right", text: t.ms === "" ? "" : fmtMs(t.ms) }))));
   } catch (e) { toast(e.message, "bad"); }
 }
-setInterval(() => { if (current === "activity" && !document.hidden) loadTrace(); }, 4000);
+setInterval(() => { if (current === "activity" && !document.hidden && !locked) loadTrace(); }, 4000);
 
 /* charts */
 const tip = $("#tip");
@@ -892,7 +912,10 @@ function renderBench(b) {
 }
 
 /* boot */
-loadOverview().then(() => show(store.get("tab", "run")));
+loadOverview().then(() => {
+  if (locked) { renderPresets([{ id: "list", label: "List the project", step: "list", expect: "permit" }, { id: "env", label: "Read .env", step: "read:.env", expect: "deny" }]); show("bench"); }
+  else show(store.get("tab", "run"));
+});
 </script>
 </body>
 </html>

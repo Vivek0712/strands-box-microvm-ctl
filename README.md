@@ -22,6 +22,7 @@ Live in us-east-1 on 2026-10-08, on an account with a RunMicrovm quota of 1 per 
 | 8 VMs, 8 boxes each | scale_to(8) in 15.0 s; 64 of 64 correct per round, 1,664 decisions and 192 denials a round, 45 to 51 boxes/s |
 | Fleet.dispatch, 96 tasks over 4 VMs | 7.1 tasks/s at 1 in flight per VM, 14.9 at 8; 96 of 96 correct at each |
 | 6 leases of 4 boxes | all RUNNING at 11.1 s, all done at 15.8 s |
+| The Strands Agents SDK agent on Nova 2 Lite, inside a VM | Box's four tutorial tasks: 2.7 to 3.7 s per box warm, 17.2 s for the first model call on a fresh VM; `no_env` and `no_deletes` denied and quoted back |
 
 The raw JSON is in [results/](results/), and the playground draws it on its Benchmarks tab.
 
@@ -37,7 +38,8 @@ image/                 the microVM image: Dockerfile, hook runtime (app.py), tas
 build/build-box.sh     builds Box for aarch64 Linux in amazonlinux:2023 (no Linux release exists yet)
 fleet/scenarios.py     single, density, fleet, dispatch, lease, plan-reject, lifecycle, failure
 playground/            the web app: server.py (JSON API over microvm-ctl) and static/index.html
-infra/                 CloudFront + S3 + Lambda Function URL template and deploy script for the playground
+infra/                 CloudFront + WAF + S3 + Lambda Function URL template and deploy script for the playground
+infra/iam/             the execution role for the VMs: logs and Nova 2 Lite on Bedrock, nothing else
 FINDINGS.md            what broke, what I fixed, and what to report upstream
 ```
 
@@ -63,7 +65,7 @@ python playground/server.py                            # http://127.0.0.1:8770
 
 ## The model-driven agent
 
-`POST /task {"prompt": "..."}` runs the Strands Agents SDK agent. The VM mints a short-lived Bedrock API key from its own execution role for each task with `aws-bedrock-token-generator`. The key goes to `box run` as `AWS_BEARER_TOKEN_BEDROCK`, the box binds it with `secret.ref = "env://AWS_BEARER_TOKEN_BEDROCK"`, the agent sees a stand-in value, and the egress gateway adds the real key to each request the policy permits. For that, the execution role needs `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream` and `bedrock:CallWithBearerToken`. Without them, scripted tasks run and model tasks fail with a typed error. The default model is `global.amazon.nova-2-lite-v1:0` in us-west-2, and `MODEL_ID` and `BEDROCK_REGION` in the image environment change it.
+`POST /task {"prompt": "..."}` runs the Strands Agents SDK agent. The VM mints a short-lived Bedrock API key from its own execution role for each task with `aws-bedrock-token-generator`. The key goes to `box run` as `AWS_BEARER_TOKEN_BEDROCK`, the box binds it with `secret.ref = "env://AWS_BEARER_TOKEN_BEDROCK"`, the agent sees a stand-in value, and the egress gateway adds the real key to each request the policy permits. For that, the execution role needs `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream` and `bedrock:CallWithBearerToken`; [infra/iam/vm-policy.json](infra/iam/vm-policy.json) grants exactly that, on the Nova 2 Lite inference profile and foundation model only, plus CloudWatch logs. Without them, scripted tasks run and model tasks fail with a typed error. `python fleet/model_run.py` runs Box's four tutorial tasks with the model inside one VM. The default model is `global.amazon.nova-2-lite-v1:0` in us-west-2, and `MODEL_ID` and `BEDROCK_REGION` in the image environment change it.
 
 ## The playground
 
@@ -79,11 +81,23 @@ Seven tabs over one API:
 - **Benchmarks:** the results above, with tooltips and tables.
 - **Activity:** every AWS call and endpoint request.
 
-Guardrails apply whatever the page asks for: at most 8 VMs, an idle policy on every launch, and a 30 minute lifetime cap.
+Guardrails apply whatever the page asks for, set by environment variables documented at the top of `playground/server.py`: VMs at once, launches per rolling hour (counted from `ListMicrovms`, so it holds across Lambda instances), lifetime cap, idle suspend, fan-out size, step, prompt and file size caps, and a check that every VM id in a request belongs to the image.
 
 `playground/e2e.py` drives the page in Chromium against the live service and asserts on what it shows: two VMs launched, a task with both denials, writes inside and outside `out/`, a 48-task fan-out, a 12-lease plan that needs waves, 2 leases to done, every tab, phone width without horizontal scroll, and a drain at the end. The last run passed with no page errors.
 
-To host it behind CloudFront: `source .env.mvm && ./infra/deploy.sh`. The template keeps the page in a private S3 bucket behind origin access control, and sends `/api/*` to a Lambda Function URL that refuses any request without the secret header CloudFront adds. The API also asks for a playground key.
+### Behind CloudFront
+
+`source .env.mvm && ./infra/deploy.sh` deploys it; mine runs at [d27duseaq87rqu.cloudfront.net](https://d27duseaq87rqu.cloudfront.net). Anyone can open the page and read the Benchmarks and Policy tabs. Everything else needs the playground key, which `deploy.sh` generates into `.playground-secrets` on first deploy.
+
+| Layer | Guardrail | Checked against the deployment |
+|---|---|---|
+| Edge | WAF: 60 POSTs to `/api/*` and 300 requests of any kind per IP per 5 minutes, AWS IP reputation list, AWS common rule set | keyless POSTs blocked with 403 from the 88th in one minute; public GETs still 200 |
+| Origin | the Function URL answers only requests carrying a secret header CloudFront adds; the S3 bucket is private behind origin access control | direct calls to either answer 403 |
+| Access | `x-playground-key` on every API call except `GET /api/policy` and `/api/benchmarks` | 401 without it; the page shows a lock banner and opens on Benchmarks |
+| Spend | 3 VMs at once, 12 launches per rolling hour, 15 minute lifetime, 3 minute idle suspend | the 13th launch answered 429 |
+| Scope | VM ids must be active strands-box VMs; steps, prompts, files size-capped | a foreign id answers 403 |
+
+The template's parameters (`MaxVms`, `LaunchesPerHour`, `MaxDurationSeconds`, `RequestsPer5MinPerIp`, `ApiWritesPer5MinPerIp`) change the limits; pass them through `STACK_OVERRIDES`. `python playground/e2e.py --url <cloudfront url> --key <key> --reuse` runs the browser test against a deployment without launching anything.
 
 ## License
 

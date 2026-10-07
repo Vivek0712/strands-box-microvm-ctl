@@ -21,12 +21,23 @@ def main() -> int:
     ap.add_argument("--out", default="media")
     ap.add_argument("--key", default=os.environ.get("PLAYGROUND_KEY", ""))
     ap.add_argument("--headed", action="store_true")
+    ap.add_argument("--reuse", action="store_true",
+                    help="use the RUNNING VMs already there: no launch, no lease run, no drain (for a deployed playground "
+                         "whose hourly launch budget is spent)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     shot = lambda page, name: page.screenshot(path=os.path.join(a.out, f"{name}.png"), full_page=False)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=not a.headed)
+        if a.key:  # what an anonymous visitor sees: the lock banner and the public Benchmarks tab
+            anon = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=2)
+            pa = anon.new_page()
+            pa.goto(a.url)
+            expect(pa.locator("#locked")).to_be_visible(timeout=30000)
+            expect(pa.locator("#bench-body svg").first).to_be_visible(timeout=30000)
+            pa.screenshot(path=os.path.join(a.out, "00-anonymous.png"))
+            anon.close()
         ctx = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=2,
                                   color_scheme="light", record_video_dir=os.path.join(a.out, "video"),
                                   record_video_size={"width": 1440, "height": 900})
@@ -42,15 +53,17 @@ def main() -> int:
 
         # Fleet: launch two microVMs and wait for RUNNING.
         page.click("nav.tabs button[data-view=fleet]")
-        page.fill("#launch-n", "2")
-        page.click("#launch")
-        expect(page.locator(".toast.good").first).to_contain_text("Launched", timeout=60000)
+        want = 1 if a.reuse else 2
+        if not a.reuse:
+            page.fill("#launch-n", "2")
+            page.click("#launch")
+            expect(page.locator(".toast.good").first).to_contain_text("Launched", timeout=60000)
         deadline = time.time() + 120
         while time.time() < deadline:
-            if page.locator("#fleet-table tbody tr:has(.dot.RUNNING)").count() >= 2:
+            if page.locator("#fleet-table tbody tr:has(.dot.RUNNING)").count() >= want:
                 break
             page.wait_for_timeout(1500)
-        assert page.locator("#fleet-table tbody tr:has(.dot.RUNNING)").count() >= 2, "two VMs never reached RUNNING"
+        assert page.locator("#fleet-table tbody tr:has(.dot.RUNNING)").count() >= want, "no RUNNING VMs"
         shot(page, "02-fleet-running")
         page.locator("#fleet-table tbody tr:has(.dot.RUNNING) button:has-text('Inside')").first.click()
         expect(page.locator("#info-body .stat").first).to_be_visible(timeout=60000)
@@ -92,7 +105,7 @@ def main() -> int:
         for label in ("List the project", "Read README.md", "Read .env", "Delete scratch.txt"):
             page.click(f".preset:has-text('{label}')")
         page.click("nav.tabs button[data-view=fanout]")
-        page.fill("#fo-n", "48")
+        page.fill("#fo-n", "24" if a.reuse else "48")
         page.fill("#fo-k", "4")
         page.click("#fo-run")
         expect(page.locator("#fo-body .stats")).to_be_visible(timeout=180000)
@@ -105,14 +118,15 @@ def main() -> int:
         page.dispatch_event("#ls-n", "input")
         expect(page.locator("#ls-plan")).to_contain_text("waves", timeout=15000)
         shot(page, "09-lease-plan-waves")
-        page.fill("#ls-n", "2")
-        page.dispatch_event("#ls-n", "input")
-        expect(page.locator("#ls-plan")).to_contain_text("2 shards", timeout=15000)
-        page.fill("#ls-b", "6")
-        page.click("#ls-run")
-        expect(page.locator("#ls-sum")).to_contain_text("2/2 done", timeout=180000)
-        shot(page, "10-lease-done")
-        page.click("#ls-stop")
+        if not a.reuse:
+            page.fill("#ls-n", "2")
+            page.dispatch_event("#ls-n", "input")
+            expect(page.locator("#ls-plan")).to_contain_text("2 shards", timeout=15000)
+            page.fill("#ls-b", "6")
+            page.click("#ls-run")
+            expect(page.locator("#ls-sum")).to_contain_text("2/2 done", timeout=180000)
+            shot(page, "10-lease-done")
+            page.click("#ls-stop")
 
         # Policy, benchmarks, activity.
         page.click("nav.tabs button[data-view=policy]")
@@ -142,6 +156,12 @@ def main() -> int:
 
         # Clean up: drain everything the run launched.
         page.click("nav.tabs button[data-view=fleet]")
+        if a.reuse:
+            ctx.close()
+            browser.close()
+            print("page errors:", errors or "none")
+            print("horizontal overflow at 390 px:", overflow)
+            return 1 if errors or overflow else 0
         page.click("button[data-fleet=drain]")
         page.click("#confirm-yes")
         expect(page.locator(".toast.good").last).to_contain_text("drain", timeout=60000)
