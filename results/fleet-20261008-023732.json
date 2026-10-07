@@ -1,0 +1,186 @@
+{
+  "scenario": "fleet",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "vms": 8,
+  "running": 8,
+  "scale_ms": 14991.8,
+  "first_call_all_ms": 1111.0,
+  "launch_tps": 0.8,
+  "tasks_per_vm": 8,
+  "rounds": [
+    {
+      "round": 1,
+      "boxes": 64,
+      "fanout_ms": 1405.3,
+      "boxes_per_s": 45.5,
+      "decisions": 1664,
+      "denials": 192,
+      "correct": 64,
+      "box_ms_p50": 449.20000000000005,
+      "per_vm_wall_ms": [
+        427.3,
+        421.5,
+        561.9,
+        600.5,
+        489.4,
+        365.3,
+        437.3,
+        593.7
+      ]
+    },
+    {
+      "round": 2,
+      "boxes": 64,
+      "fanout_ms": 3744.4,
+      "boxes_per_s": 17.1,
+      "decisions": 1664,
+      "denials": 192,
+      "correct": 64,
+      "box_ms_p50": 338.05,
+      "per_vm_wall_ms": [
+        349.2,
+        347.1,
+        347.5,
+        456.4,
+        457.2,
+        348.3,
+        346.1,
+        450.2
+      ]
+    },
+    {
+      "round": 3,
+      "boxes": 64,
+      "fanout_ms": 1248.4,
+      "boxes_per_s": 51.3,
+      "decisions": 1664,
+      "denials": 192,
+      "correct": 64,
+      "box_ms_p50": 337.35,
+      "per_vm_wall_ms": [
+        341.9,
+        347.2,
+        347.4,
+        457.6,
+        458.3,
+        344.9,
+        344.7,
+        458.6
+      ]
+    }
+  ],
+  "job_status": [
+    {
+      "microvm_id": "microvm-14d46370-721e-3bb0-98d6-52cad9bce966",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 28.52,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-52dcb72d-86e9-3a75-91e6-536fd056b1fe",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 21.402,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-a665242d-c602-370e-95ee-b2932fd0cfbf",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 22.27,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-64a27f5b-50fe-3cd1-8d23-46dc430cbafb",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 23.203,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-f582102e-1540-33df-9a98-cc0e7d5ec093",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 24.756,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-c778e1d0-3e2a-3335-9a73-c439564fa541",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 26.041,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-c4fa3aa4-ccea-3dec-b6fd-07612be981ab",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 27.487,
+      "done": false,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-d29c7c69-51eb-32a5-887e-05ab7a5173e3",
+      "lease_id": null,
+      "phase": "init",
+      "progress": {
+        "done": 0,
+        "total": null
+      },
+      "elapsed_s": 29.762,
+      "done": false,
+      "lost": false,
+      "error": null
+    }
+  ],
+  "snapshot_by_state": {
+    "RUNNING": 8,
+    "TERMINATED": 12
+  },
+  "drained": 8,
+  "drain_ms": 1277.7
+}

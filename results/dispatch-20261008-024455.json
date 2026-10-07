@@ -1,0 +1,77 @@
+{
+  "scenario": "dispatch",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "rows": [
+    {
+      "per_vm": 1,
+      "vms": 4,
+      "tasks": 96,
+      "wall_ms": 13575.3,
+      "tasks_per_s": 7.1,
+      "correct": 96,
+      "request_ms_p50": 407.25,
+      "request_ms_p90": 414.6,
+      "box_ms_p50": 140.4,
+      "per_vm_counts": [
+        22,
+        23,
+        25,
+        26
+      ]
+    },
+    {
+      "per_vm": 2,
+      "vms": 4,
+      "tasks": 96,
+      "wall_ms": 8841.6,
+      "tasks_per_s": 10.9,
+      "correct": 96,
+      "request_ms_p50": 404.20000000000005,
+      "request_ms_p90": 417.8,
+      "box_ms_p50": 143.75,
+      "per_vm_counts": [
+        20,
+        22,
+        25,
+        29
+      ]
+    },
+    {
+      "per_vm": 4,
+      "vms": 4,
+      "tasks": 96,
+      "wall_ms": 7058.1,
+      "tasks_per_s": 13.6,
+      "correct": 96,
+      "request_ms_p50": 497.45,
+      "request_ms_p90": 1622.6,
+      "box_ms_p50": 264.04999999999995,
+      "per_vm_counts": [
+        14,
+        21,
+        28,
+        33
+      ]
+    },
+    {
+      "per_vm": 8,
+      "vms": 4,
+      "tasks": 96,
+      "wall_ms": 6462.9,
+      "tasks_per_s": 14.9,
+      "correct": 96,
+      "request_ms_p50": 759.55,
+      "request_ms_p90": 2032.4,
+      "box_ms_p50": 472.04999999999995,
+      "per_vm_counts": [
+        13,
+        19,
+        29,
+        35
+      ]
+    }
+  ],
+  "drained": 4
+}

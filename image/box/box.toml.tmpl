@@ -1,0 +1,23 @@
+# One box per task. sbx renders this file into the task's directory, so every path is absolute.
+name = "{name}"
+box_dir = "{task_dir}/state"
+policy = "{policy}"
+
+[agent]
+command = {command}
+workspace = "{task_dir}/project"
+env = {{ AWS_REGION = "{bedrock_region}", AWS_EC2_METADATA_DISABLED = "true", MODEL_ID = "{model_id}", PATH = "/usr/bin:/bin", HOME = "{task_dir}/home", TMPDIR = "{task_dir}/tmp" }}
+
+# What the agent's own process can touch without asking the policy: Python and the SDK, its own
+# temporary files. The project gets no grant at all: on Linux a list-only grant does not exist, and
+# read would let the agent open .env with no decision. Every file in the project goes through the shell.
+[agent.filesystem]
+read = ["/opt/sbx/venv", "/usr/lib64", "/usr/lib/python3.12", "/etc/pki/tls/certs", "/etc/pki/ca-trust/extracted"]
+read_file = ["/opt/sbx/agent/agent.py", "/opt/sbx/agent/scripted.py", "/etc/ld.so.cache", "/dev/urandom", "/etc/pki/tls/openssl.cnf"]
+# The SDK ships compiled extensions (pydantic_core), and on Linux a read bind cannot map code.
+exec = ["/usr/bin/python3.12", "/opt/sbx/venv"]
+write = ["{task_dir}/tmp", "{task_dir}/home"]
+
+[egress.model]
+destinations = ["bedrock-runtime.{bedrock_region}.amazonaws.com"]
+secret.ref = "env://AWS_BEARER_TOKEN_BEDROCK"

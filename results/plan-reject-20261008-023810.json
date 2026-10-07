@@ -1,0 +1,142 @@
+{
+  "scenario": "plan-reject",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "plans": {
+    "4": {
+      "verdict": "accepted",
+      "summary": "4 shards on 1 GB: 4 at a time (memory quota 8 GB / 1 GB baseline), 1 wave, all running in ~7 s, worst case 2880 VM-s = $0.05",
+      "plan": {
+        "shards": 4,
+        "baseline_mib": 1024,
+        "policy": {
+          "budget_s": 600,
+          "heartbeat_timeout_s": 120,
+          "slack_s": 120,
+          "max_concurrency": null,
+          "max_vm_seconds": null,
+          "approval_usd": null
+        },
+        "limit": {
+          "baseline_mib": 1024,
+          "memory_quota_gb": 8.0,
+          "launch_rate": 0.8,
+          "by_memory": 8,
+          "by_policy": null,
+          "limit": 8,
+          "reason": "memory quota 8 GB / 1 GB baseline"
+        },
+        "concurrency": 4,
+        "waves": 1,
+        "launch_to_all_running_s": 7.25,
+        "worst_case_vm_seconds": 2880,
+        "worst_case_usd": 0.05044,
+        "needs_approval": false,
+        "rejected": null,
+        "summary": "4 shards on 1 GB: 4 at a time (memory quota 8 GB / 1 GB baseline), 1 wave, all running in ~7 s, worst case 2880 VM-s = $0.05"
+      }
+    },
+    "8": {
+      "verdict": "accepted",
+      "summary": "8 shards on 1 GB: 8 at a time (memory quota 8 GB / 1 GB baseline), 1 wave, all running in ~12 s, worst case 5760 VM-s = $0.10",
+      "plan": {
+        "shards": 8,
+        "baseline_mib": 1024,
+        "policy": {
+          "budget_s": 600,
+          "heartbeat_timeout_s": 120,
+          "slack_s": 120,
+          "max_concurrency": null,
+          "max_vm_seconds": null,
+          "approval_usd": null
+        },
+        "limit": {
+          "baseline_mib": 1024,
+          "memory_quota_gb": 8.0,
+          "launch_rate": 0.8,
+          "by_memory": 8,
+          "by_policy": null,
+          "limit": 8,
+          "reason": "memory quota 8 GB / 1 GB baseline"
+        },
+        "concurrency": 8,
+        "waves": 1,
+        "launch_to_all_running_s": 12.25,
+        "worst_case_vm_seconds": 5760,
+        "worst_case_usd": 0.10088,
+        "needs_approval": false,
+        "rejected": null,
+        "summary": "8 shards on 1 GB: 8 at a time (memory quota 8 GB / 1 GB baseline), 1 wave, all running in ~12 s, worst case 5760 VM-s = $0.10"
+      }
+    },
+    "12": {
+      "verdict": "waves",
+      "summary": "12 shards on 1 GB: 8 at a time (memory quota 8 GB / 1 GB baseline), 2 waves, all running in ~24 s, worst case 8640 VM-s = $0.15",
+      "plan": {
+        "shards": 12,
+        "baseline_mib": 1024,
+        "policy": {
+          "budget_s": 600,
+          "heartbeat_timeout_s": 120,
+          "slack_s": 120,
+          "max_concurrency": null,
+          "max_vm_seconds": null,
+          "approval_usd": null
+        },
+        "limit": {
+          "baseline_mib": 1024,
+          "memory_quota_gb": 8.0,
+          "launch_rate": 0.8,
+          "by_memory": 8,
+          "by_policy": null,
+          "limit": 8,
+          "reason": "memory quota 8 GB / 1 GB baseline"
+        },
+        "concurrency": 8,
+        "waves": 2,
+        "launch_to_all_running_s": 24.5,
+        "worst_case_vm_seconds": 8640,
+        "worst_case_usd": 0.15132,
+        "needs_approval": false,
+        "rejected": null,
+        "summary": "12 shards on 1 GB: 8 at a time (memory quota 8 GB / 1 GB baseline), 2 waves, all running in ~24 s, worst case 8640 VM-s = $0.15"
+      }
+    },
+    "40": {
+      "verdict": "waves",
+      "summary": "40 shards on 1 GB: 8 at a time (memory quota 8 GB / 1 GB baseline), 5 waves, all running in ~61 s, worst case 28800 VM-s = $0.50",
+      "plan": {
+        "shards": 40,
+        "baseline_mib": 1024,
+        "policy": {
+          "budget_s": 600,
+          "heartbeat_timeout_s": 120,
+          "slack_s": 120,
+          "max_concurrency": null,
+          "max_vm_seconds": null,
+          "approval_usd": null
+        },
+        "limit": {
+          "baseline_mib": 1024,
+          "memory_quota_gb": 8.0,
+          "launch_rate": 0.8,
+          "by_memory": 8,
+          "by_policy": null,
+          "limit": 8,
+          "reason": "memory quota 8 GB / 1 GB baseline"
+        },
+        "concurrency": 8,
+        "waves": 5,
+        "launch_to_all_running_s": 61.25,
+        "worst_case_vm_seconds": 28800,
+        "worst_case_usd": 0.5044,
+        "needs_approval": false,
+        "rejected": null,
+        "summary": "40 shards on 1 GB: 8 at a time (memory quota 8 GB / 1 GB baseline), 5 waves, all running in ~61 s, worst case 28800 VM-s = $0.50"
+      }
+    }
+  },
+  "lease_many_12": "12 leases exceed the concurrency limit 8; launch in waves",
+  "launched": 0
+}

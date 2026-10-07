@@ -1,0 +1,120 @@
+{
+  "scenario": "lease",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "shards": 6,
+  "boxes_per_shard": 4,
+  "plan": {
+    "shards": 6,
+    "baseline_mib": 1024,
+    "policy": {
+      "budget_s": 600,
+      "heartbeat_timeout_s": 120,
+      "slack_s": 120,
+      "max_concurrency": null,
+      "max_vm_seconds": null,
+      "approval_usd": null
+    },
+    "limit": {
+      "baseline_mib": 1024,
+      "memory_quota_gb": 8.0,
+      "launch_rate": 0.8,
+      "by_memory": 8,
+      "by_policy": null,
+      "limit": 8,
+      "reason": "memory quota 8 GB / 1 GB baseline"
+    },
+    "concurrency": 6,
+    "waves": 1,
+    "launch_to_all_running_s": 9.75,
+    "worst_case_vm_seconds": 4320,
+    "worst_case_usd": 0.07566,
+    "needs_approval": false,
+    "rejected": null,
+    "summary": "6 shards on 1 GB: 6 at a time (memory quota 8 GB / 1 GB baseline), 1 wave, all running in ~10 s, worst case 4320 VM-s = $0.08"
+  },
+  "launch_ms": 7292.7,
+  "running_ms": 11076.4,
+  "all_done_ms": 15838.1,
+  "jobs": [
+    {
+      "microvm_id": "microvm-aeff509d-cd47-305c-afde-20db849e303b",
+      "lease_id": "sbx-023748-2",
+      "phase": "boxes 4/4",
+      "progress": {
+        "done": 4,
+        "total": 4
+      },
+      "elapsed_s": 10.969,
+      "done": true,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-1949029f-3c1a-390b-87a6-fe03413cba88",
+      "lease_id": "sbx-023748-4",
+      "phase": "boxes 4/4",
+      "progress": {
+        "done": 4,
+        "total": 4
+      },
+      "elapsed_s": 8.671,
+      "done": true,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-5cf9b89d-aeae-345e-a18e-5316a43ed4b2",
+      "lease_id": "sbx-023748-0",
+      "phase": "boxes 4/4",
+      "progress": {
+        "done": 4,
+        "total": 4
+      },
+      "elapsed_s": 7.339,
+      "done": true,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-76089494-804e-305e-ad37-0d10523d9917",
+      "lease_id": "sbx-023748-3",
+      "phase": "boxes 4/4",
+      "progress": {
+        "done": 4,
+        "total": 4
+      },
+      "elapsed_s": 12.352,
+      "done": true,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-e4963184-a05d-301d-a54e-aeb60399c685",
+      "lease_id": "sbx-023748-5",
+      "phase": "boxes 4/4",
+      "progress": {
+        "done": 4,
+        "total": 4
+      },
+      "elapsed_s": 9.652,
+      "done": true,
+      "lost": false,
+      "error": null
+    },
+    {
+      "microvm_id": "microvm-bd2baeb4-fd45-3148-8b91-b6bf4feb8644",
+      "lease_id": "sbx-023748-1",
+      "phase": "boxes 4/4",
+      "progress": {
+        "done": 4,
+        "total": 4
+      },
+      "elapsed_s": 13.136,
+      "done": true,
+      "lost": false,
+      "error": null
+    }
+  ]
+}

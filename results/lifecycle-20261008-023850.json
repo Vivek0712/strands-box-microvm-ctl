@@ -1,0 +1,18 @@
+{
+  "scenario": "lifecycle",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "vms": 4,
+  "suspend_all_ms": 3979.5,
+  "auto_resume_task_ms": 958.7,
+  "resume_all_ms": 2533.9,
+  "correct_after_resume": 4,
+  "scale_down_victim": [
+    "microvm-4dd583db-4643-3498-9c5a-10bc46491573"
+  ],
+  "suspended_member": "microvm-4dd583db-4643-3498-9c5a-10bc46491573",
+  "scale_down_ms": 1084.8,
+  "drained": 4,
+  "drain_ms": 1771.0
+}

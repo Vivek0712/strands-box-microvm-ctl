@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strands Box Playground</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='7' fill='%232a78d6'/%3E%3Cpath d='M10 12l6-3 6 3v8l-6 3-6-3z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee; --sunken: #efeee9;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --line: #e1e0d9; --line-2: #c3c2b7; --ring: rgba(11,11,11,.10);
+  --accent: #2a78d6; --accent-ink: #ffffff; --accent-soft: #e3eefb; --accent-text: #1c5cab;
+  --good: #0ca30c; --good-text: #006300; --good-soft: #e3f4e3;
+  --bad: #d03b3b; --bad-text: #a52a2a; --bad-soft: #fbe7e7;
+  --warn: #fab219; --warn-soft: #fdf2d8; --warn-text: #7a5300;
+  --series-1: #2a78d6; --series-2: #eb6834;
+  --code-kw: #8a3ec2; --code-str: #1a7f4b; --code-com: #898781; --code-at: #b05a00;
+  --shadow: 0 1px 2px rgba(11,11,11,.05), 0 4px 16px rgba(11,11,11,.04);
+  --radius: 12px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #222220; --sunken: #141413;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --line: #2c2c2a; --line-2: #383835; --ring: rgba(255,255,255,.10);
+    --accent: #3987e5; --accent-ink: #ffffff; --accent-soft: #16263a; --accent-text: #86b6ef;
+    --good: #0ca30c; --good-text: #4fcf4f; --good-soft: #13261a;
+    --bad: #e66767; --bad-text: #f09595; --bad-soft: #2e1717;
+    --warn: #fab219; --warn-soft: #2d2410; --warn-text: #f5c75b;
+    --series-1: #3987e5; --series-2: #d95926;
+    --code-kw: #c29bf0; --code-str: #6fd39b; --code-com: #898781; --code-at: #f0a35c;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #222220; --sunken: #141413;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+  --line: #2c2c2a; --line-2: #383835; --ring: rgba(255,255,255,.10);
+  --accent: #3987e5; --accent-ink: #ffffff; --accent-soft: #16263a; --accent-text: #86b6ef;
+  --good: #0ca30c; --good-text: #4fcf4f; --good-soft: #13261a;
+  --bad: #e66767; --bad-text: #f09595; --bad-soft: #2e1717;
+  --warn: #fab219; --warn-soft: #2d2410; --warn-text: #f5c75b;
+  --series-1: #3987e5; --series-2: #d95926;
+  --code-kw: #c29bf0; --code-str: #6fd39b; --code-com: #898781; --code-at: #f0a35c;
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+code, pre, .mono { font-family: var(--mono); font-size: 12.5px; }
+a { color: var(--accent-text); }
+
+/* chrome */
+header.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1320px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand svg { flex: none; }
+.brand h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.brand p { margin: 0; font-size: 12px; color: var(--ink-2); }
+.top-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.chip b { color: var(--ink); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.RUNNING { background: var(--good); } .dot.SUSPENDED, .dot.SUSPENDING { background: var(--warn); } .dot.PENDING { background: var(--accent); } .dot.TERMINATED, .dot.TERMINATING { background: var(--muted); }
+.icon-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); display: inline-grid; place-items: center; cursor: pointer; }
+.icon-btn:hover { border-color: var(--line-2); }
+nav.tabs { max-width: 1320px; margin: 0 auto; padding: 0 20px; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs button { border: 0; background: none; padding: 10px 12px; color: var(--ink-2); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 500; }
+nav.tabs button:hover { color: var(--ink); }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+main { max-width: 1320px; margin: 0 auto; padding: 20px; }
+section.view { display: none; } section.view.active { display: block; }
+.lede { color: var(--ink-2); margin: 0 0 16px; max-width: 900px; }
+
+/* layout */
+.grid-run { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 960px) { .grid-run, .grid-2, .grid-3 { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
+.card > header { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0; flex-wrap: wrap; }
+.card > header h2 { font-size: 14px; margin: 0; font-weight: 650; }
+.card > header .sub { color: var(--muted); font-size: 12px; }
+.card > header .end { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.card .body { padding: 14px 16px 16px; }
+.label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin: 0 0 6px; }
+.field + .field, .field + #scripted-ui > .field:first-child, .field + #model-ui > .field:first-child { margin-top: 14px; }
+.hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+
+/* controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface); cursor: pointer; font-weight: 550; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.06); background: var(--accent); }
+.btn.danger { color: var(--bad-text); border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+.btn.danger:hover { background: var(--bad-soft); }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
+.btn .kbd { font-size: 11px; opacity: .75; font-family: var(--mono); }
+input[type=text], input[type=number], select, textarea { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); }
+textarea { height: auto; min-height: 84px; padding: 8px 10px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input[type=number] { width: 90px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--sunken); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: 7px; cursor: pointer; color: var(--ink-2); font-weight: 550; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--ring); }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.preset { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 12.5px; }
+.preset:hover { border-color: var(--accent); }
+.tag { font-size: 10.5px; font-weight: 650; padding: 1px 6px; border-radius: 5px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.tag.permit { background: var(--good-soft); color: var(--good-text); }
+.tag.deny { background: var(--bad-soft); color: var(--bad-text); }
+.tag.neutral { background: var(--sunken); color: var(--ink-2); }
+.steps { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.steps li { display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 10px; border-top: 1px solid var(--line); background: var(--surface); }
+.steps li:first-child { border-top: 0; }
+.steps .n { color: var(--muted); font-size: 12px; width: 16px; text-align: right; }
+.steps code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.steps .x { border: 0; background: none; color: var(--muted); cursor: pointer; width: 24px; height: 24px; border-radius: 6px; }
+.steps .x:hover { background: var(--sunken); color: var(--ink); }
+.steps .empty { color: var(--muted); justify-content: center; padding: 14px; }
+.callout { border: 1px solid var(--line); background: var(--sunken); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--ink-2); }
+.callout.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 40%, var(--line)); color: var(--warn-text); }
+.callout.bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); color: var(--bad-text); }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.stat { background: var(--sunken); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.stat .k { font-size: 11.5px; color: var(--ink-2); }
+.stat .v { font-size: 22px; font-weight: 650; letter-spacing: -.02em; margin-top: 2px; }
+.stat .v small { font-size: 12px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.stat .s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* results */
+.empty-state { text-align: center; padding: 48px 20px; color: var(--ink-2); }
+.empty-state svg { color: var(--muted); }
+.empty-state h3 { margin: 10px 0 4px; font-size: 15px; color: var(--ink); }
+.step-card { border: 1px solid var(--line); border-radius: 10px; margin-top: 10px; overflow: hidden; }
+.step-card > div.h { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--surface-2); }
+.step-card > div.h code { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.step-card pre { margin: 0; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; border-top: 1px solid var(--line); }
+.step-card pre.err { background: var(--bad-soft); color: var(--bad-text); }
+.exit { font-family: var(--mono); font-size: 11.5px; padding: 1px 7px; border-radius: 999px; }
+.exit.ok { background: var(--good-soft); color: var(--good-text); }
+.exit.fail { background: var(--bad-soft); color: var(--bad-text); }
+.ms { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.t th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; font-variant-numeric: tabular-nums; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t td.res { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.verdict { display: inline-flex; align-items: center; gap: 4px; font-weight: 650; font-size: 12px; }
+.verdict.permit { color: var(--good-text); } .verdict.deny { color: var(--bad-text); }
+details.disclose { border: 1px solid var(--line); border-radius: 10px; margin-top: 12px; }
+details.disclose > summary { cursor: pointer; padding: 9px 12px; font-weight: 600; font-size: 13px; color: var(--ink-2); list-style: none; display: flex; align-items: center; gap: 8px; }
+details.disclose > summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+details.disclose[open] > summary::before { transform: rotate(45deg); }
+details.disclose pre { margin: 0; padding: 10px 12px; border-top: 1px solid var(--line); max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.section-title { display: flex; align-items: center; gap: 8px; margin: 18px 0 4px; font-size: 13px; font-weight: 650; }
+.section-title .end { margin-left: auto; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.state { display: inline-flex; align-items: center; gap: 6px; font-weight: 550; font-size: 12.5px; }
+.progress { height: 6px; background: var(--sunken); border-radius: 99px; overflow: hidden; min-width: 80px; }
+.progress > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+.progress.done > i { background: var(--good); }
+
+/* code */
+.code { margin: 0; padding: 14px 16px; background: var(--sunken); border-radius: 10px; overflow: auto; max-height: 560px; line-height: 1.55; white-space: pre; }
+.code .kw { color: var(--code-kw); font-weight: 600; } .code .str { color: var(--code-str); } .code .com { color: var(--code-com); font-style: italic; } .code .at { color: var(--code-at); }
+
+/* charts */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid line { stroke: var(--line); stroke-width: 1; }
+.chart .axis text, .chart text.axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .baseline { stroke: var(--line-2); }
+.chart .lbl { fill: var(--ink-2); font-size: 11px; font-weight: 600; }
+.chart .hit { fill: transparent; cursor: crosshair; }
+.chart-title { font-size: 13px; font-weight: 650; margin: 0; }
+.chart-sub { font-size: 12px; color: var(--muted); margin: 2px 0 10px; }
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 6px 24px rgba(0,0,0,.14); border-radius: 8px; padding: 7px 9px; font-size: 12px; opacity: 0; transition: opacity .08s; max-width: 260px; }
+.tip b { display: block; font-size: 12px; } .tip span { color: var(--ink-2); }
+
+/* toast + dialog */
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px)); }
+.toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent); border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16); font-size: 13px; overflow-wrap: anywhere; }
+.toast.bad { border-left-color: var(--bad); } .toast.good { border-left-color: var(--good); }
+dialog { border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(440px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog .body { padding: 18px; } dialog h3 { margin: 0 0 6px; font-size: 15px; } dialog p { margin: 0 0 12px; color: var(--ink-2); }
+dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--surface-2); border-radius: 0 0 14px 14px; }
+.spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s .7s linear infinite; display: inline-block; }
+@keyframes s { to { transform: rotate(360deg); } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 640px) {
+  .top-inner, main, nav.tabs { padding-left: 16px; padding-right: 16px; }
+  .brand p { display: none; }
+  .top-meta .chip.hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="var(--accent)"/><path d="M10 12l6-3 6 3v8l-6 3-6-3z M10 12l6 3 6-3 M16 15v8" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <div><h1>Strands Box playground</h1><p>Policy-checked agents in AWS Lambda MicroVMs, run by microvm-ctl</p></div>
+    </div>
+    <div class="top-meta">
+      <span class="chip hide-sm" id="chip-region">region <b>-</b></span>
+      <span class="chip hide-sm" id="chip-image">image <b>-</b></span>
+      <span class="chip" id="chip-fleet"><span class="dot"></span> fleet <b>-</b></span>
+      <button class="icon-btn" id="theme" title="Switch theme" aria-label="Switch theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <button class="icon-btn" id="keybtn" title="Playground key" aria-label="Playground key"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3m-3 3l3 3m-6 0l2 2"/></svg></button>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="run" aria-selected="true">Run a task</button>
+    <button role="tab" data-view="fleet">Fleet</button>
+    <button role="tab" data-view="fanout">Fan-out</button>
+    <button role="tab" data-view="leases">Leases</button>
+    <button role="tab" data-view="policy">Policy</button>
+    <button role="tab" data-view="bench">Benchmarks</button>
+    <button role="tab" data-view="activity">Activity</button>
+  </nav>
+</header>
+
+<main>
+<!-- RUN -->
+<section class="view active" id="view-run">
+  <p class="lede">Every task runs in a fresh Strands Box inside a Lambda MicroVM. The agent gets no grant on the project, so each command and each file it touches goes through Strands Shell, and the Dogwood policy decides. Pick steps, run them, and read every decision the box recorded.</p>
+  <div class="grid-run">
+    <div class="card">
+      <header><h2>Compose</h2><span class="sub">one box per run</span></header>
+      <div class="body">
+        <div class="field">
+          <label class="label" for="target">Target microVM</label>
+          <select id="target"><option value="">Any RUNNING microVM</option></select>
+          <div id="no-vm" class="callout warn" style="display:none;margin-top:8px">
+            <div class="row" style="justify-content:space-between"><span>No microVM is RUNNING.</span><button class="btn sm" id="quick-launch">Launch one</button></div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Agent</span>
+          <div class="seg" role="group" aria-label="Agent mode">
+            <button aria-pressed="true" data-mode="scripted">Scripted steps</button>
+            <button aria-pressed="false" data-mode="model">Model prompt</button>
+          </div>
+          <p class="hint" id="mode-hint">The scripted agent calls the same three tools as the Strands SDK agent, in the order you set. No model access needed.</p>
+        </div>
+        <div id="scripted-ui">
+          <div class="field">
+            <span class="label">Add a step</span>
+            <div class="presets" id="presets"></div>
+          </div>
+          <div class="field">
+            <div class="row"><input type="text" id="custom" placeholder="Any shell command, for example: grep -n def util.py" aria-label="Custom command"><button class="btn" id="add-custom">Add</button></div>
+          </div>
+          <div class="field">
+            <div class="row" style="justify-content:space-between"><span class="label" style="margin:0">Steps</span><button class="btn sm" id="clear-steps">Clear</button></div>
+            <ol class="steps" id="steps" style="margin-top:6px"></ol>
+          </div>
+        </div>
+        <div id="model-ui" style="display:none">
+          <div class="field">
+            <label class="label" for="prompt">Task for the Strands Agents SDK agent</label>
+            <textarea id="prompt">Summarize README.md in one sentence, then try to read .env.</textarea>
+            <p class="hint">The VM mints a short-lived Bedrock API key from its execution role. The key stays in the box's trusted process; the agent sees a stand-in. The role needs bedrock:InvokeModel* and bedrock:CallWithBearerToken.</p>
+          </div>
+        </div>
+        <details class="disclose" id="files-box">
+          <summary>Project files <span class="sub" id="files-count" style="font-weight:400;color:var(--muted)"></span></summary>
+          <div style="padding:10px 12px;border-top:1px solid var(--line)">
+            <p class="hint" style="margin-top:0">Every box starts from README.md, .env, hello.py, util.py and scratch.txt. Add or replace files for this run.</p>
+            <div class="row"><input type="text" id="file-path" placeholder="notes/todo.md" style="flex:1;min-width:140px" aria-label="File path"></div>
+            <textarea id="file-content" placeholder="file content" style="margin-top:6px" aria-label="File content"></textarea>
+            <div class="row" style="margin-top:6px"><button class="btn sm" id="add-file">Add file</button></div>
+            <ul id="files" style="margin:8px 0 0;padding-left:18px"></ul>
+          </div>
+        </details>
+        <div class="row" style="margin-top:16px">
+          <button class="btn primary" id="run"><span>Run in a box</span><span class="kbd">Ctrl Enter</span></button>
+          <span class="ms" id="run-status"></span>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="result-card">
+      <header><h2>Result</h2><span class="sub" id="result-sub"></span></header>
+      <div class="body" id="result">
+        <div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>
+          <h3>Nothing has run yet</h3>
+          <p>The default steps read README.md, try .env, try to delete scratch.txt, and count Python lines.<br>Expect two denials.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FLEET -->
+<section class="view" id="view-fleet">
+  <p class="lede">The strands-box microVMs in this account, through microvm-ctl's FleetManager and Fleet. Launches are throttled to the RunMicrovm quota. Every launch carries an idle policy and a lifetime cap, so nothing here runs forever.</p>
+  <div class="card">
+    <header>
+      <h2>microVMs</h2><span class="sub" id="fleet-sub"></span>
+      <div class="end">
+        <div class="row"><input type="number" id="launch-n" value="2" min="1" max="8" aria-label="How many to launch"><button class="btn primary sm" id="launch">Launch</button></div>
+        <div class="row"><input type="number" id="scale-n" value="4" min="0" max="8" aria-label="Scale to"><button class="btn sm" id="scale">Scale to</button></div>
+        <button class="btn sm" data-fleet="suspend_all">Suspend all</button>
+        <button class="btn sm" data-fleet="resume_all">Resume all</button>
+        <button class="btn sm danger" data-fleet="drain">Drain</button>
+      </div>
+    </header>
+    <div class="body">
+      <div class="table-wrap"><table class="t" id="fleet-table"><thead><tr><th>microVM</th><th>State</th><th>Version</th><th>Age</th><th style="text-align:right">Actions</th></tr></thead><tbody></tbody></table></div>
+      <p class="hint" id="guardrails"></p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;display:none" id="info-card">
+    <header><h2>Inside the microVM</h2><span class="sub mono" id="info-id"></span><div class="end"><button class="btn sm" id="info-close">Close</button></div></header>
+    <div class="body" id="info-body"></div>
+  </div>
+</section>
+
+<!-- FANOUT -->
+<section class="view" id="view-fanout">
+  <p class="lede">Fleet.dispatch spreads many boxes over the RUNNING microVMs. Each VM gets a fixed number of requests in flight and pulls the next task when one finishes, so a slower VM takes fewer. Use it when the VMs are already warm and each task is short.</p>
+  <div class="card">
+    <header><h2>Dispatch over the warm fleet</h2>
+      <div class="end">
+        <label class="row" style="gap:6px"><span class="sub">tasks</span><input type="number" id="fo-n" value="48" min="1" max="256"></label>
+        <label class="row" style="gap:6px"><span class="sub">in flight per VM</span><input type="number" id="fo-k" value="4" min="1" max="16"></label>
+        <button class="btn primary sm" id="fo-run">Dispatch</button>
+      </div>
+    </header>
+    <div class="body" id="fo-body"><p class="hint" style="margin:0">Uses the steps from the Run tab. Each task adds a step that echoes its index.</p></div>
+  </div>
+</section>
+
+<!-- LEASES -->
+<section class="view" id="view-leases">
+  <p class="lede">A lease hands one microVM one job: the task list travels in runHookPayload, the hook runtime runs the boxes and reports progress, and microvm-ctl sizes the whole fan-out against your quota before anything launches.</p>
+  <div class="grid-2">
+    <div class="card">
+      <header><h2>Plan and launch</h2></header>
+      <div class="body">
+        <div class="row">
+          <label class="row" style="gap:6px"><span class="sub">leases (microVMs)</span><input type="number" id="ls-n" value="3" min="1" max="40"></label>
+          <label class="row" style="gap:6px"><span class="sub">boxes per lease</span><input type="number" id="ls-b" value="4" min="1" max="32"></label>
+        </div>
+        <div class="callout" id="ls-plan" style="margin-top:12px">Planning...</div>
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="ls-run">Launch leases</button><button class="btn danger" id="ls-stop" style="display:none">Terminate these microVMs</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <header><h2>Fleet job</h2><span class="sub" id="ls-sum"></span></header>
+      <div class="body" id="ls-body"><p class="hint" style="margin:0">Launch leases to follow each microVM's phase and progress here, polled every two seconds through GET /status.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- POLICY -->
+<section class="view" id="view-policy">
+  <p class="lede">The two files that define every box. The box.toml template decides what the agent's own process can reach with no policy decision; the Dogwood policy decides everything that goes through Strands Shell and the egress gateway.</p>
+  <div class="grid-2">
+    <div class="card"><header><h2>policy.dw</h2><span class="sub">Dogwood: permit and forbid, deny by default</span></header><div class="body"><pre class="code" id="policy-code"></pre></div></div>
+    <div class="card"><header><h2>box.toml template</h2><span class="sub">rendered per task under /work/&lt;task&gt;</span></header><div class="body"><pre class="code" id="toml-code"></pre></div></div>
+  </div>
+</section>
+
+<!-- BENCH -->
+<section class="view" id="view-bench">
+  <p class="lede">Measured on the live service in us-east-1 with fleet/scenarios.py: a 1 GB, 2 vCPU microVM image, Strands Box 0.1.0, the scripted agent running five steps. Hover a chart for values; each chart has a table.</p>
+  <div id="bench-body"><div class="empty-state"><span class="spin"></span></div></div>
+</section>
+
+<!-- ACTIVITY -->
+<section class="view" id="view-activity">
+  <p class="lede">Every AWS API call and endpoint request this playground made, newest first.</p>
+  <div class="card"><div class="body"><div class="table-wrap"><table class="t" id="trace-table"><thead><tr><th>Time</th><th>Service</th><th>Operation</th><th>Status</th><th style="text-align:right">ms</th></tr></thead><tbody></tbody></table></div></div></div>
+</section>
+</main>
+
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog id="confirm"><div class="body"><h3 id="confirm-title"></h3><p id="confirm-text"></p></div><div class="actions"><button class="btn" value="cancel" id="confirm-no">Cancel</button><button class="btn danger" id="confirm-yes">Confirm</button></div></dialog>
+<dialog id="keydlg"><div class="body"><h3>Playground key</h3><p>This deployment asks for a key before it launches anything in the account.</p><input type="text" id="key-input" autocomplete="off" aria-label="Playground key"></div><div class="actions"><button class="btn" id="key-cancel">Cancel</button><button class="btn primary" id="key-save">Save</button></div></dialog>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("sbx." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("sbx." + k, JSON.stringify(v)); } catch {} },
+};
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+const fmtMs = (v) => v === null || v === undefined ? "-" : v >= 10000 ? (v / 1000).toFixed(1) + " s" : v >= 1000 ? (v / 1000).toFixed(2) + " s" : Math.round(v) + " ms";
+const shortId = (id) => id ? id.replace(/^microvm-/, "").slice(0, 8) : "-";
+const fmtAge = (s) => s === null || s === undefined ? "-" : s < 60 ? s + " s" : s < 3600 ? Math.floor(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
+
+/* toast, confirm, key */
+function toast(msg, kind = "") {
+  const t = h("div", { class: "toast " + kind, text: msg });
+  $("#toasts").append(t);
+  setTimeout(() => t.remove(), kind === "bad" ? 9000 : 4500);
+}
+function confirmDlg(title, text, yes = "Confirm") {
+  return new Promise((res) => {
+    const d = $("#confirm");
+    $("#confirm-title").textContent = title; $("#confirm-text").textContent = text; $("#confirm-yes").textContent = yes;
+    const done = (v) => { d.close(); $("#confirm-yes").onclick = $("#confirm-no").onclick = null; res(v); };
+    $("#confirm-yes").onclick = () => done(true); $("#confirm-no").onclick = () => done(false);
+    d.addEventListener("cancel", () => done(false), { once: true });
+    d.showModal();
+  });
+}
+let keyResolve = null;
+function askKey() {
+  return new Promise((res) => { keyResolve = res; $("#key-input").value = store.get("key", ""); $("#keydlg").showModal(); });
+}
+$("#key-save").onclick = () => { store.set("key", $("#key-input").value.trim()); $("#keydlg").close(); keyResolve && keyResolve(true); };
+$("#key-cancel").onclick = () => { $("#keydlg").close(); keyResolve && keyResolve(false); };
+$("#keybtn").onclick = () => askKey();
+
+async function api(method, path, body) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const headers = { "content-type": "application/json" };
+    const key = store.get("key", "");
+    if (key) headers["x-playground-key"] = key;
+    const r = await fetch("/api/" + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    if (r.status === 401 && attempt === 0) { if (await askKey()) continue; }
+    let data; try { data = await r.json(); } catch { data = { error: "HTTP " + r.status }; }
+    if (!r.ok) throw new Error(data.error || "HTTP " + r.status);
+    return data;
+  }
+}
+
+/* theme */
+(function theme() {
+  const saved = store.get("theme", null);
+  if (saved) document.documentElement.dataset.theme = saved;
+  $("#theme").onclick = () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next; store.set("theme", next);
+    if (benchData) renderBench(benchData);
+  };
+})();
+
+/* tabs */
+let current = "run";
+function show(view) {
+  current = view;
+  $$("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === view)));
+  $$("section.view").forEach((s) => s.classList.toggle("active", s.id === "view-" + view));
+  store.set("tab", view);
+  if (view === "fleet") refreshFleet();
+  if (view === "policy") loadPolicy();
+  if (view === "bench") loadBench();
+  if (view === "activity") loadTrace();
+  if (view === "leases") planLeases();
+}
+$$("nav.tabs button").forEach((b) => b.onclick = () => show(b.dataset.view));
+
+/* state */
+let overview = null, vms = [];
+let steps = store.get("steps", null);
+let mode = "scripted";
+const files = {};
+
+async function loadOverview() {
+  try {
+    overview = await api("GET", "overview");
+    $("#chip-region b").textContent = overview.region;
+    const active = overview.versions.find((v) => v.state === "SUCCESSFUL" || v.state === "ACTIVE");
+    $("#chip-image b").textContent = overview.image + (active ? " v" + active.version : "");
+    $("#guardrails").textContent = `Guardrails: at most ${overview.max_vms} microVMs; suspend after ${overview.guardrails.max_idle_s / 60} min idle, terminate after ${overview.guardrails.suspended_for_s / 60} min suspended, ${overview.guardrails.max_duration_s / 60} min lifetime cap. RunMicrovm at ${overview.launch_tps}/s, memory quota ${overview.memory_quota_gb ?? "?"} GB.`;
+    renderPresets(overview.presets);
+    setVms(overview.vms);
+  } catch (e) { toast("Could not load the overview: " + e.message, "bad"); }
+}
+function setVms(list) {
+  vms = list;
+  const by = {}; list.forEach((v) => by[v.state] = (by[v.state] || 0) + 1);
+  const running = by.RUNNING || 0;
+  const chip = $("#chip-fleet");
+  chip.querySelector(".dot").className = "dot " + (running ? "RUNNING" : list.length ? "SUSPENDED" : "");
+  chip.querySelector("b").textContent = list.length ? Object.entries(by).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") : "empty";
+  const sel = $("#target"), prev = sel.value;
+  sel.replaceChildren(h("option", { value: "" }, `Any RUNNING microVM (${running})`),
+    ...list.filter((v) => v.state === "RUNNING" || v.state === "SUSPENDED").map((v) => h("option", { value: v.microvmId }, `${shortId(v.microvmId)}  ${v.state.toLowerCase()}`)));
+  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  $("#no-vm").style.display = running || list.some((v) => v.state === "SUSPENDED") ? "none" : "block";
+  renderFleetTable();
+}
+
+/* compose */
+function renderPresets(presets) {
+  if (!steps) steps = presets.slice(0, 5).map((p) => p.step);
+  $("#presets").replaceChildren(...presets.map((p) => {
+    const kind = p.expect.startsWith("deny") ? "deny" : "permit";
+    return h("button", { class: "preset", title: p.step, onclick: () => { steps.push(p.step); renderSteps(); } },
+      p.label, h("span", { class: "tag " + kind, text: kind }));
+  }));
+  renderSteps();
+}
+function renderSteps() {
+  store.set("steps", steps);
+  const ol = $("#steps");
+  if (!steps.length) { ol.replaceChildren(h("li", { class: "empty", text: "No steps. Add one above." })); return; }
+  ol.replaceChildren(...steps.map((s, i) => {
+    const [kind, ...rest] = s.split(":"); const arg = rest.join(":");
+    const label = kind === "list" ? "ls -a" : kind === "read" ? "cat " + arg : arg;
+    return h("li", {}, h("span", { class: "n", text: i + 1 }), h("span", { class: "tag neutral", text: kind }), h("code", { title: label, text: label }),
+      h("button", { class: "x", "aria-label": "Remove step " + (i + 1), onclick: () => { steps.splice(i, 1); renderSteps(); } }, "×"));
+  }));
+}
+$("#add-custom").onclick = () => { const v = $("#custom").value.trim(); if (!v) return; steps.push("run:" + v); $("#custom").value = ""; renderSteps(); };
+$("#custom").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#add-custom").click(); } });
+$("#clear-steps").onclick = () => { steps = []; renderSteps(); };
+$$(".seg button").forEach((b) => b.onclick = () => {
+  mode = b.dataset.mode;
+  $$(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  $("#scripted-ui").style.display = mode === "scripted" ? "" : "none";
+  $("#model-ui").style.display = mode === "model" ? "" : "none";
+  $("#mode-hint").textContent = mode === "scripted" ? "The scripted agent calls the same three tools as the Strands SDK agent, in the order you set. No model access needed." : "The Strands Agents SDK agent decides which tools to call. Its Bedrock traffic goes through the box's egress gateway and the policy.";
+});
+$("#add-file").onclick = () => {
+  const p = $("#file-path").value.trim(); if (!p) return;
+  files[p] = $("#file-content").value; $("#file-path").value = ""; $("#file-content").value = ""; renderFiles();
+};
+function renderFiles() {
+  const keys = Object.keys(files);
+  $("#files-count").textContent = keys.length ? `(${keys.length})` : "";
+  $("#files").replaceChildren(...keys.map((k) => h("li", {}, h("code", { text: k }), " ", h("button", { class: "btn sm", onclick: () => { delete files[k]; renderFiles(); } }, "Remove"))));
+}
+$("#quick-launch").onclick = async () => { await launch(1); };
+
+async function runTask() {
+  const btn = $("#run");
+  const body = { microvm_id: $("#target").value || undefined };
+  if (mode === "scripted") { if (!steps.length) return toast("Add at least one step."); body.steps = steps; }
+  else body.prompt = $("#prompt").value.trim();
+  if (Object.keys(files).length) body.files = files;
+  btn.disabled = true; $("#run-status").replaceChildren(h("span", { class: "spin" }), " running a box");
+  const t0 = performance.now();
+  try {
+    const r = await api("POST", "task", body);
+    renderResult(r, performance.now() - t0);
+    $("#run-status").textContent = "";
+  } catch (e) { $("#run-status").textContent = ""; toast(e.message, "bad"); }
+  finally { btn.disabled = false; }
+}
+$("#run").onclick = runTask;
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && current === "run") runTask(); });
+
+function renderResult(r, roundTrip) {
+  const res = r.result || {};
+  const decisions = res.decisions || [];
+  const denied = decisions.filter((d) => d.verdict === "deny");
+  $("#result-sub").replaceChildren(h("span", { class: "mono", text: r.microvm_id }));
+  const out = $("#result");
+  out.replaceChildren();
+  if (res.exit_code === 3 && res.error) out.append(h("div", { class: "callout warn", text: res.error }));
+  out.append(h("div", { class: "stats" },
+    stat("Box", fmtMs(res.box_ms), "create, run, tear down"),
+    stat("Request", fmtMs(r.request_ms), "through the endpoint"),
+    stat("Decisions", decisions.length, `${decisions.length - denied.length} permitted`),
+    stat("Denied", denied.length, denied.length ? [...new Set(denied.map((d) => d.rule))].join(", ") : "none"),
+  ));
+  const agentSteps = (res.agent && res.agent.steps) || [];
+  if (agentSteps.length) {
+    out.append(h("div", { class: "section-title" }, "Tool calls", h("span", { class: "sub", style: "font-weight:400;color:var(--muted)", text: "through Strands Shell" })));
+    agentSteps.forEach((s, i) => {
+      const card = h("div", { class: "step-card" },
+        h("div", { class: "h" }, h("span", { class: "exit " + (s.exit === 0 ? "ok" : "fail"), text: "exit " + s.exit }), h("code", { text: s.command }), h("span", { class: "ms", text: fmtMs(s.ms) })));
+      if (s.stdout) card.append(h("pre", { text: s.stdout }));
+      if (s.stderr) card.append(h("pre", { class: "err", text: s.stderr }));
+      out.append(card);
+    });
+  } else if (res.stdout) {
+    out.append(h("div", { class: "section-title", text: "Agent output" }), h("pre", { class: "code", style: "white-space:pre-wrap", text: res.stdout }));
+  }
+  const only = h("input", { type: "checkbox", id: "only-deny" });
+  const tbody = h("tbody");
+  const fill = () => {
+    tbody.replaceChildren(...decisions.filter((d) => !only.checked || d.verdict === "deny").map((d) => h("tr", {},
+      h("td", {}, h("span", { class: "verdict " + d.verdict, text: (d.verdict === "permit" ? "✓ " : "✕ ") + d.verdict })),
+      h("td", { class: "mono", text: d.action }), h("td", { class: "res", text: d.resource }), h("td", { class: "mono", text: d.rule || "-" }))));
+  };
+  only.onchange = fill; fill();
+  out.append(h("div", { class: "section-title" }, "Policy decisions", h("span", { class: "sub", style: "font-weight:400;color:var(--muted)", text: "in the order the box recorded them" }),
+    h("label", { class: "switch end" }, only, "Denials only")));
+  out.append(h("div", { class: "table-wrap" }, h("table", { class: "t" }, h("thead", {}, h("tr", {}, h("th", { text: "Verdict" }), h("th", { text: "Action" }), h("th", { text: "Resource" }), h("th", { text: "Rule" }))), tbody)));
+  const report = (res.stderr || "").split("\n").filter((l) => l.startsWith("strands-box") || l.startsWith("  ")).join("\n");
+  if (report) out.append(h("details", { class: "disclose" }, h("summary", { text: "Box startup report: what the agent's own process can reach" }), h("pre", { text: report })));
+  if (res.project_after) out.append(h("p", { class: "hint", text: "Project after the run: " + res.project_after.join("  ") }));
+}
+function stat(k, v, s) { return h("div", { class: "stat" }, h("div", { class: "k", text: k }), h("div", { class: "v", text: v }), s ? h("div", { class: "s", text: s }) : null); }
+
+/* fleet */
+async function refreshFleet() {
+  try { const r = await api("GET", "vms"); setVms(r.vms); } catch (e) { toast(e.message, "bad"); }
+}
+function renderFleetTable() {
+  const tb = $("#fleet-table tbody");
+  $("#fleet-sub").textContent = vms.length ? `${vms.length} active` : "";
+  if (!vms.length) { tb.replaceChildren(h("tr", {}, h("td", { colspan: 5, style: "text-align:center;color:var(--muted);padding:24px" }, "No strands-box microVMs. Launch one to start."))); return; }
+  tb.replaceChildren(...vms.map((v) => {
+    const actions = h("div", { class: "row", style: "justify-content:flex-end" });
+    if (v.state === "RUNNING") actions.append(h("button", { class: "btn sm", onclick: () => showInfo(v.microvmId) }, "Inside"), h("button", { class: "btn sm", onclick: () => life(v.microvmId, "suspend") }, "Suspend"));
+    if (v.state === "SUSPENDED") actions.append(h("button", { class: "btn sm", onclick: () => life(v.microvmId, "resume") }, "Resume"));
+    actions.append(h("button", { class: "btn sm danger", onclick: () => life(v.microvmId, "terminate") }, "Terminate"));
+    return h("tr", {}, h("td", { class: "mono", title: v.microvmId, text: v.microvmId }),
+      h("td", {}, h("span", { class: "state" }, h("span", { class: "dot " + v.state }), v.state.toLowerCase())),
+      h("td", { text: v.imageVersion || "-" }), h("td", { text: fmtAge(v.age_s) }), h("td", {}, actions));
+  }));
+}
+async function launch(n) {
+  try { const r = await api("POST", "vms", { count: n }); toast(`Launched ${r.launched.length} microVM${r.launched.length > 1 ? "s" : ""} in ${fmtMs(r.ms)}${r.capped ? " (capped by the playground limit)" : ""}. They reach RUNNING in about 4 s.`, "good"); pollFast(); }
+  catch (e) { toast(e.message, "bad"); }
+}
+$("#launch").onclick = () => launch(+$("#launch-n").value || 1);
+$("#scale").onclick = async () => {
+  try { const r = await api("POST", "fleet", { action: "scale", n: +$("#scale-n").value }); toast(`Scaled to ${r.desired}: launched ${r.launched.length}.`, "good"); pollFast(); } catch (e) { toast(e.message, "bad"); }
+};
+$$("[data-fleet]").forEach((b) => b.onclick = async () => {
+  const action = b.dataset.fleet;
+  if (action === "drain" && !(await confirmDlg("Drain the fleet?", "Terminates every strands-box microVM in this account. Running boxes stop.", "Drain"))) return;
+  try { const r = await api("POST", "fleet", { action }); toast(`${action.replace("_", " ")}: ${JSON.stringify(r).replace(/[{}"]/g, "").replace(/,/g, ", ")}`, "good"); pollFast(); } catch (e) { toast(e.message, "bad"); }
+});
+async function life(id, verb) {
+  if (verb === "terminate" && !(await confirmDlg("Terminate " + shortId(id) + "?", "The microVM and its snapshot go away.", "Terminate"))) return;
+  try { const r = await api("POST", `vms/${id}/${verb}`); toast(`${verb} ${shortId(id)} in ${fmtMs(r.ms)}`, "good"); pollFast(); } catch (e) { toast(e.message, "bad"); }
+}
+async function showInfo(id) {
+  const card = $("#info-card"); card.style.display = ""; $("#info-id").textContent = id;
+  $("#info-body").replaceChildren(h("span", { class: "spin" }));
+  try {
+    const r = await api("GET", `vms/${id}/info`); const i = r.info;
+    const probe = i.probe_at_build || {};
+    $("#info-body").replaceChildren(h("div", { class: "stats" },
+      stat("Box", (i.box || "").replace("strands-box ", ""), "strands-box"), stat("Kernel", (i.kernel || "").split("-")[0], i.arch),
+      stat("vCPUs", i.cpus, "per microVM"), stat("Tasks", i.tasks, `${i.denied} denials since launch`),
+      stat("Build probe", probe.ok ? "passed" : "failed", probe.denied_rules ? probe.denied_rules.join(", ") : ""), stat("Request", fmtMs(r.ms), "GET /info")),
+      h("p", { class: "hint", text: `Model ${i.model_id} in ${i.bedrock_region}.` }));
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e) { $("#info-body").replaceChildren(h("div", { class: "callout bad", text: e.message })); }
+}
+$("#info-close").onclick = () => $("#info-card").style.display = "none";
+let fastUntil = 0;
+function pollFast() { fastUntil = Date.now() + 30000; refreshFleet(); }
+setInterval(() => { if (document.hidden) return; if (current === "fleet" || current === "run" || Date.now() < fastUntil) refreshFleet(); }, 3000);
+
+/* fan-out */
+$("#fo-run").onclick = async () => {
+  const btn = $("#fo-run"); btn.disabled = true;
+  const body = { count: +$("#fo-n").value, per_vm: +$("#fo-k").value, steps };
+  $("#fo-body").replaceChildren(h("div", { class: "row" }, h("span", { class: "spin" }), `Dispatching ${body.count} boxes...`));
+  try { renderFanout(await api("POST", "dispatch", body)); } catch (e) { $("#fo-body").replaceChildren(h("div", { class: "callout bad", text: e.message })); }
+  finally { btn.disabled = false; }
+};
+function renderFanout(r) {
+  const out = $("#fo-body"); out.replaceChildren();
+  out.append(h("div", { class: "stats" }, stat("Tasks", r.count, `${r.ok} exited 0`), stat("Wall", fmtMs(r.wall_ms), `${r.per_vm} in flight per VM`),
+    stat("Throughput", r.tasks_per_s, "boxes per second"), stat("Decisions", r.decisions, "policy checks"),
+    stat("Denials", Object.values(r.denials_by_rule).reduce((a, b) => a + b, 0), Object.keys(r.denials_by_rule).join(", ") || "none")));
+  const g = h("div", { class: "grid-2", style: "margin-top:16px" });
+  const c1 = h("div", { class: "chart" }); const c2 = h("div", { class: "chart" });
+  g.append(h("div", {}, h("p", { class: "chart-title", text: "Tasks per microVM" }), h("p", { class: "chart-sub", text: "the shared queue gives faster VMs more" }), c1),
+           h("div", {}, h("p", { class: "chart-title", text: "Denials by rule" }), h("p", { class: "chart-sub", text: "across every box in the run" }), c2));
+  out.append(g);
+  barChart(c1, r.per_vm_rows.map((x) => shortId(x.microvm_id)), r.per_vm_rows.map((x) => x.tasks), { fmt: (v) => v + " tasks", extra: r.per_vm_rows.map((x) => "p50 " + fmtMs(x.p50_ms)) });
+  const rules = Object.entries(r.denials_by_rule);
+  if (rules.length) barChart(c2, rules.map((x) => x[0]), rules.map((x) => x[1]), { fmt: (v) => v + " denials" });
+  else c2.append(h("p", { class: "hint", text: "No denials." }));
+  const rows = r.rows.slice(0, 60);
+  out.append(h("details", { class: "disclose" }, h("summary", { text: `Every task (${r.rows.length}${r.rows.length > 60 ? ", first 60 shown" : ""})` }),
+    h("div", { class: "table-wrap", style: "border:0;border-top:1px solid var(--line);border-radius:0" }, h("table", { class: "t" },
+      h("thead", {}, h("tr", {}, ...["#", "microVM", "HTTP", "exit", "box", "request", "denied"].map((t) => h("th", { text: t })))),
+      h("tbody", {}, ...rows.map((x) => h("tr", {}, h("td", { text: x.index }), h("td", { class: "mono", text: shortId(x.microvm_id) }), h("td", { text: x.status ?? "err" }),
+        h("td", { text: x.exit_code ?? "-" }), h("td", { text: fmtMs(x.box_ms) }), h("td", { text: fmtMs(x.ms) }), h("td", { class: "mono", text: x.error || x.denied_rules.join(", ") }))))))));
+}
+
+/* leases */
+let planTimer = null, leaseIds = [], leaseTimer = null;
+function planLeases() {
+  clearTimeout(planTimer);
+  planTimer = setTimeout(async () => {
+    try {
+      const r = await api("GET", "plan?shards=" + (+$("#ls-n").value || 1));
+      const ok = r.verdict === "ok";
+      $("#ls-plan").className = "callout" + (ok ? "" : " warn");
+      $("#ls-plan").replaceChildren(h("div", { text: r.summary }), ok ? null : h("div", { style: "margin-top:4px;font-weight:600", text: r.verdict }));
+    } catch (e) { $("#ls-plan").textContent = e.message; }
+  }, 250);
+}
+$("#ls-n").oninput = planLeases;
+$("#ls-run").onclick = async () => {
+  const btn = $("#ls-run"); btn.disabled = true;
+  try {
+    const r = await api("POST", "lease", { shards: +$("#ls-n").value, boxes: +$("#ls-b").value, steps });
+    leaseIds = r.launched; toast(`Launched ${leaseIds.length} leases in ${fmtMs(r.ms)}.`, "good");
+    $("#ls-stop").style.display = "";
+    const started = Date.now();
+    clearInterval(leaseTimer);
+    const tick = async () => {
+      try {
+        const j = await api("GET", "jobs?ids=" + leaseIds.join(","));
+        renderJobs(j, Date.now() - started);
+        if (j.done >= leaseIds.length) { clearInterval(leaseTimer); toast(`All ${leaseIds.length} leases done in ${fmtMs(Date.now() - started)}.`, "good"); }
+      } catch (e) { /* the VMs are still booting */ }
+    };
+    leaseTimer = setInterval(tick, 2000); tick();
+  } catch (e) { toast(e.message, "bad"); }
+  finally { btn.disabled = false; }
+};
+$("#ls-stop").onclick = async () => {
+  for (const id of leaseIds) { try { await api("POST", `vms/${id}/terminate`); } catch {} }
+  clearInterval(leaseTimer); toast(`Terminated ${leaseIds.length} leased microVMs.`, "good"); $("#ls-stop").style.display = "none"; pollFast();
+};
+function renderJobs(j, elapsed) {
+  $("#ls-sum").textContent = `${j.done}/${leaseIds.length} done, ${fmtMs(elapsed)}`;
+  const seen = new Set(j.rows.map((r) => r.microvm_id));
+  const waiting = leaseIds.filter((id) => !seen.has(id));
+  $("#ls-body").replaceChildren(h("div", { class: "table-wrap" }, h("table", { class: "t" },
+    h("thead", {}, h("tr", {}, ...["Lease", "microVM", "Phase", "Progress", "Elapsed"].map((t) => h("th", { text: t })))),
+    h("tbody", {}, ...j.rows.map((r) => {
+      const p = r.progress || {}; const pct = p.total ? Math.round(100 * p.done / p.total) : 0;
+      return h("tr", {}, h("td", { class: "mono", text: r.lease_id || "-" }), h("td", { class: "mono", text: shortId(r.microvm_id) }),
+        h("td", {}, r.done ? h("span", { class: "verdict permit", text: "✓ done" }) : r.error ? h("span", { class: "verdict deny", text: r.error }) : (r.phase || "-")),
+        h("td", {}, h("div", { class: "progress" + (r.done ? " done" : "") }, h("i", { style: `width:${pct}%` }))),
+        h("td", { text: r.elapsed_s ? r.elapsed_s.toFixed(1) + " s" : "-" }));
+    }), ...waiting.map((id) => h("tr", {}, h("td", { text: "-" }), h("td", { class: "mono", text: shortId(id) }), h("td", { colspan: 3, style: "color:var(--muted)" }, h("span", { class: "row", style: "gap:6px" }, h("span", { class: "spin" }), "booting"))))))));
+}
+
+/* policy */
+let policyLoaded = false;
+function highlight(src, lang) {
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return src.split("\n").map((line) => {
+    const ci = lang === "toml" ? line.indexOf("#") : line.indexOf("//");
+    let code = ci >= 0 ? line.slice(0, ci) : line, com = ci >= 0 ? line.slice(ci) : "";
+    code = esc(code).replace(/(&quot;|")(.*?)(")/g, '<span class="str">"$2"</span>');
+    if (lang === "dw") code = code.replace(/\b(permit|forbid|when|principal|action|resource|context|like|in|has)\b/g, '<span class="kw">$1</span>').replace(/(@\w+)/g, '<span class="at">$1</span>');
+    else code = code.replace(/^(\s*\[[^\]]+\])/, '<span class="kw">$1</span>').replace(/^(\s*[\w.]+)(\s*=)/, '<span class="at">$1</span>$2');
+    return code + (com ? '<span class="com">' + esc(com) + "</span>" : "");
+  }).join("\n");
+}
+async function loadPolicy() {
+  if (policyLoaded) return;
+  try { const r = await api("GET", "policy"); $("#policy-code").innerHTML = highlight(r.policy, "dw"); $("#toml-code").innerHTML = highlight(r.box_toml, "toml"); policyLoaded = true; }
+  catch (e) { toast(e.message, "bad"); }
+}
+
+/* activity */
+async function loadTrace() {
+  try {
+    const r = await api("GET", "trace");
+    $("#trace-table tbody").replaceChildren(...(r.items.length ? r.items : [{ at: "", service: "", op: "No calls yet", status: "", ms: "" }]).map((t) => h("tr", {},
+      h("td", { class: "mono", text: t.at }), h("td", { text: t.service }), h("td", { class: "mono", text: t.op }),
+      h("td", {}, t.status === "" ? "" : h("span", { class: "verdict " + (t.status && t.status < 400 ? "permit" : "deny"), text: t.error || t.status })),
+      h("td", { style: "text-align:right", text: t.ms === "" ? "" : fmtMs(t.ms) }))));
+  } catch (e) { toast(e.message, "bad"); }
+}
+setInterval(() => { if (current === "activity" && !document.hidden) loadTrace(); }, 4000);
+
+/* charts */
+const tip = $("#tip");
+function showTip(e, title, line) { tip.replaceChildren(h("b", { text: title }), h("span", { text: line })); tip.style.opacity = 1; moveTip(e); }
+function moveTip(e) { const w = tip.offsetWidth, x = Math.min(e.clientX + 14, innerWidth - w - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; }
+function hideTip() { tip.style.opacity = 0; }
+const NS = "http://www.w3.org/2000/svg";
+function s(tag, attrs = {}, text) { const el = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v); if (text !== undefined) el.textContent = text; return el; }
+function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+function niceMax(v) { if (v <= 0) return 1; const st = niceStep(v / 4); return Math.ceil(v / st) * st; }
+function barChart(el, labels, values, opt = {}) {
+  const W = 520, rowH = 30, pad = { l: 92, r: 64, t: 4, b: 4 }, H = pad.t + pad.b + rowH * labels.length;
+  const max = niceMax(Math.max(...values));
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opt.title || "bar chart" });
+  const x = (v) => pad.l + (W - pad.l - pad.r) * v / max;
+  svg.append(s("line", { x1: pad.l, x2: pad.l, y1: pad.t, y2: H - pad.b, class: "baseline" }));
+  labels.forEach((lab, i) => {
+    const y = pad.t + i * rowH + 6, bh = rowH - 12, w = Math.max(2, x(values[i]) - pad.l);
+    svg.append(s("text", { x: pad.l - 8, y: y + bh / 2 + 4, "text-anchor": "end", class: "axis" }, lab));
+    svg.append(s("path", { d: `M${pad.l},${y} h${w - 4} a4,4 0 0 1 4,4 v${bh - 8} a4,4 0 0 1 -4,4 h${-(w - 4)} z`, fill: "var(--series-1)" }));
+    svg.append(s("text", { x: pad.l + w + 6, y: y + bh / 2 + 4, class: "lbl" }, String(values[i])));
+    const hit = s("rect", { x: 0, y: y - 4, width: W, height: rowH, class: "hit" });
+    hit.addEventListener("mousemove", (e) => showTip(e, lab, (opt.fmt ? opt.fmt(values[i]) : values[i]) + (opt.extra ? ", " + opt.extra[i] : "")));
+    hit.addEventListener("mouseleave", hideTip);
+    svg.append(hit);
+  });
+  el.replaceChildren(svg);
+}
+function lineChart(el, xs, ys, opt = {}) {
+  const W = 520, H = 220, pad = { l: 48, r: 18, t: 14, b: 34 };
+  const step = niceStep(Math.max(...ys) * 1.05 / 4), max = Math.ceil(Math.max(...ys) * 1.05 / step) * step;
+  const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opt.title || "line chart" });
+  const px = (i) => pad.l + (W - pad.l - pad.r) * (xs.length === 1 ? 0.5 : i / (xs.length - 1));
+  const py = (v) => H - pad.b - (H - pad.t - pad.b) * v / max;
+  const grid = s("g", { class: "grid" });
+  for (let v = 0; v <= max + step / 1000; v += step) {
+    const y = py(v), k = v;
+    if (k) grid.append(s("line", { x1: pad.l, x2: W - pad.r, y1: y, y2: y }));
+    svg.append(s("text", { x: pad.l - 8, y: y + 4, "text-anchor": "end", class: "axis" }, opt.tick ? opt.tick(v) : +v.toFixed(1)));
+  }
+  svg.append(grid, s("line", { x1: pad.l, x2: W - pad.r, y1: H - pad.b, y2: H - pad.b, class: "baseline" }));
+  xs.forEach((xv, i) => svg.append(s("text", { x: px(i), y: H - pad.b + 18, "text-anchor": "middle", class: "axis" }, String(xv))));
+  if (opt.xlabel) svg.append(s("text", { x: (pad.l + W - pad.r) / 2, y: H - 2, "text-anchor": "middle", class: "axis" }, opt.xlabel));
+  svg.append(s("path", { d: ys.map((v, i) => (i ? "L" : "M") + px(i) + "," + py(v)).join(" "), fill: "none", stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round" }));
+  const cross = s("line", { y1: pad.t, y2: H - pad.b, stroke: "var(--line-2)", "stroke-dasharray": "3 3", opacity: 0 });
+  svg.append(cross);
+  ys.forEach((v, i) => svg.append(s("circle", { cx: px(i), cy: py(v), r: 4, fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 2 })));
+  const last = ys.length - 1;
+  svg.append(s("text", { x: px(last) - 6, y: py(ys[last]) - 10, "text-anchor": "end", class: "lbl" }, opt.yfmt ? opt.yfmt(ys[last]) : String(ys[last])));
+  const hit = s("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: H - pad.t - pad.b, class: "hit" });
+  hit.addEventListener("mousemove", (e) => {
+    const r = svg.getBoundingClientRect(); const xr = (e.clientX - r.left) * W / r.width;
+    let best = 0; xs.forEach((_, i) => { if (Math.abs(px(i) - xr) < Math.abs(px(best) - xr)) best = i; });
+    cross.setAttribute("x1", px(best)); cross.setAttribute("x2", px(best)); cross.setAttribute("opacity", 1);
+    showTip(e, (opt.xname || "") + " " + xs[best], opt.yfmt ? opt.yfmt(ys[best]) : String(ys[best]));
+  });
+  hit.addEventListener("mouseleave", () => { hideTip(); cross.setAttribute("opacity", 0); });
+  svg.append(hit);
+  el.replaceChildren(svg);
+}
+function tableView(head, rows) {
+  return h("details", { class: "disclose" }, h("summary", { text: "Table" }), h("div", { class: "table-wrap", style: "border:0;border-top:1px solid var(--line);border-radius:0" },
+    h("table", { class: "t" }, h("thead", {}, h("tr", {}, ...head.map((t) => h("th", { text: t })))), h("tbody", {}, ...rows.map((r) => h("tr", {}, ...r.map((c) => h("td", { text: c }))))))));
+}
+let benchData = null;
+async function loadBench() {
+  if (benchData) return renderBench(benchData);
+  try { benchData = await api("GET", "benchmarks"); renderBench(benchData); } catch (e) { $("#bench-body").replaceChildren(h("div", { class: "callout bad", text: e.message })); }
+}
+function chartCard(title, sub, draw, table) {
+  const c = h("div", { class: "chart" });
+  const card = h("div", { class: "card" }, h("div", { class: "body" }, h("p", { class: "chart-title", text: title }), h("p", { class: "chart-sub", text: sub }), c, table));
+  requestAnimationFrame(() => draw(c));
+  return card;
+}
+function renderBench(b) {
+  const out = $("#bench-body"); out.replaceChildren();
+  const sg = b.single;
+  if (sg) out.append(h("div", { class: "card" }, h("div", { class: "body" }, h("p", { class: "chart-title", text: "One microVM, end to end" }),
+    h("p", { class: "chart-sub", text: `${sg.date}, ${sg.box}, kernel ${sg.kernel}, ${sg.cpus} vCPUs` }),
+    h("div", { class: "stats" }, stat("RUNNING", fmtMs(sg.running_ms), "after RunMicrovm"), stat("First byte", fmtMs(sg.first_byte_ms), "GET /info"),
+      stat("First task", fmtMs(sg.first_task_ms), `box ${fmtMs(sg.first_task_box_ms)}`), stat("Warm task p50", fmtMs(sg.warm_task_ms.p50), `box ${fmtMs(sg.warm_box_ms.p50)}, n=${sg.warm_task_ms.n}`),
+      stat("Suspend", fmtMs(sg.suspend_ms), "to SUSPENDED"), stat("Auto-resume task", fmtMs(sg.auto_resume_task_ms), "call on a suspended VM")))));
+  const g = h("div", { class: "grid-2", style: "margin-top:16px" }); out.append(g);
+  const d = b.density;
+  if (d) {
+    const xs = d.rows.map((r) => r.boxes);
+    g.append(chartCard("Boxes per second in one microVM", "1 GB, 2 vCPUs, by boxes started at once", (c) => lineChart(c, xs, d.rows.map((r) => r.boxes_per_s), { xlabel: "boxes at once", xname: "boxes at once:", yfmt: (v) => (+v).toFixed(1) + "/s", tick: (v) => v + "/s" }),
+      tableView(["boxes at once", "boxes/s", "box p50", "correct"], d.rows.map((r) => [r.boxes, r.boxes_per_s, fmtMs(r.box_p50_ms), `${r.correct}/${r.boxes}`]))));
+    g.append(chartCard("Time per box as the VM fills", "median box time, same runs", (c) => lineChart(c, xs, d.rows.map((r) => Math.round(r.box_p50_ms)), { xlabel: "boxes at once", xname: "boxes at once:", yfmt: (v) => fmtMs(v), tick: (v) => fmtMs(v) }),
+      tableView(["boxes at once", "box p50", "box max", "VM wall"], d.rows.map((r) => [r.boxes, fmtMs(r.box_p50_ms), fmtMs(r.box_max_ms), fmtMs(r.vm_wall_ms)]))));
+  }
+  const ds = b.dispatch;
+  if (ds) g.append(chartCard("Fleet.dispatch over 4 warm microVMs", `${ds.rows[0].tasks} tasks, one box each, by requests in flight per VM`, (c) => lineChart(c, ds.rows.map((r) => r.per_vm), ds.rows.map((r) => r.tasks_per_s), { xlabel: "requests in flight per VM", xname: "per VM:", yfmt: (v) => (+v).toFixed(1) + "/s", tick: (v) => v + "/s" }),
+    tableView(["per VM", "tasks/s", "request p50", "split", "correct"], ds.rows.map((r) => [r.per_vm, r.tasks_per_s, fmtMs(r.request_ms_p50), r.per_vm_counts.join(" / "), `${r.correct}/${r.tasks}`]))));
+  const fl = b.fleet;
+  if (fl && fl.rounds) g.append(chartCard(`${fl.vms} microVMs, ${fl.tasks_per_vm} boxes each per round`, `scale_to(${fl.vms}) in ${fmtMs(fl.scale_ms)}; boxes per second per round, round 1 cold`, (c) => barChart(c, fl.rounds.map((r) => "round " + r.round), fl.rounds.map((r) => r.boxes_per_s), { fmt: (v) => v + " boxes/s", extra: fl.rounds.map((r) => `${r.boxes} boxes, ${r.decisions} decisions, ${r.correct}/${r.boxes} correct`) }),
+    tableView(["round", "boxes", "wall", "boxes/s", "decisions", "denials", "correct"], fl.rounds.map((r) => [r.round, r.boxes, fmtMs(r.fanout_ms), r.boxes_per_s, r.decisions, r.denials, `${r.correct}/${r.boxes}`]))));
+  const lc = b.lifecycle, ls = b.lease;
+  if (lc || ls) out.append(h("div", { class: "card", style: "margin-top:16px" }, h("div", { class: "body" }, h("p", { class: "chart-title", text: "Lifecycle and leases" }),
+    h("p", { class: "chart-sub", text: "fleet operations through microvm-ctl" }),
+    h("div", { class: "stats" },
+      lc ? stat("suspend_all", fmtMs(lc.suspend_all_ms), `${lc.vms} microVMs`) : null, lc ? stat("resume_all", fmtMs(lc.resume_all_ms), `${lc.correct_after_resume}/${lc.vms} correct after`) : null,
+      lc ? stat("Auto-resume", fmtMs(lc.auto_resume_task_ms), "task on a suspended VM") : null, lc ? stat("Drain", fmtMs(lc.drain_ms), `${lc.drained} terminated`) : null,
+      ls ? stat("Leases running", fmtMs(ls.running_ms), `${ls.shards} microVMs`) : null, ls ? stat("Leases done", fmtMs(ls.all_done_ms), `${ls.shards} x ${ls.boxes_per_shard} boxes`) : null))));
+}
+
+/* boot */
+loadOverview().then(() => show(store.get("tab", "run")));
+</script>
+</body>
+</html>

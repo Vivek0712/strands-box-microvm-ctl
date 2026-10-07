@@ -1,0 +1,57 @@
+{
+  "scenario": "failure",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "microvm_id": "microvm-180750b8-9926-3f1b-a23b-1c086da84a5f",
+  "lease": {
+    "kind": "none",
+    "id": "sbx-fail-023911",
+    "heartbeats": 0,
+    "lost": false,
+    "done": true,
+    "error": {
+      "error_type": "BoxTaskFailed",
+      "message": "1/2 box task(s) failed",
+      "retryable": false,
+      "data": {
+        "results": [
+          {
+            "task_id": "c471de7e05b5",
+            "exit_code": 0,
+            "box_ms": 170.3,
+            "denied": [
+              {
+                "verdict": "deny",
+                "action": "fs:read",
+                "resource": "/work/c471de7e05b5/project/.env",
+                "rule": "no_env"
+              },
+              {
+                "verdict": "deny",
+                "action": "fs:delete",
+                "resource": "/work/c471de7e05b5/project/scratch.txt",
+                "rule": "no_deletes"
+              },
+              {
+                "verdict": "deny",
+                "action": "fs:read",
+                "resource": "/work/c471de7e05b5/project/.env",
+                "rule": "no_env"
+              }
+            ],
+            "decisions": 26
+          },
+          {
+            "task_id": "b0733828a04f",
+            "exit_code": 1,
+            "box_ms": 4281.1,
+            "denied": [],
+            "decisions": 0
+          }
+        ]
+      }
+    }
+  },
+  "log": []
+}

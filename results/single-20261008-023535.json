@@ -1,0 +1,192 @@
+{
+  "scenario": "single",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "microvm_id": "microvm-15ad32b8-d070-3b63-bc69-ab7129438b1e",
+  "box": "strands-box 0.1.0",
+  "kernel": "6.1.166-24.303.amzn2023.aarch64",
+  "cpus": 2,
+  "launch_call_ms": 1508.3,
+  "running_ms": 4042.5,
+  "first_byte_ms": 5911.5,
+  "first_task_ms": 384.8,
+  "first_task_box_ms": 116.7,
+  "first_task_decisions": [
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "ls",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "cat",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/README.md",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "cat",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "deny",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/.env",
+      "rule": "no_env"
+    },
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "rm",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/scratch.txt",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "deny",
+      "action": "fs:delete",
+      "resource": "/work/7ba602d960cb/project/scratch.txt",
+      "rule": "no_deletes"
+    },
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "find",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "xargs",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/out",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/out",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/out",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/hello.py",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/util.py",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/scratch.txt",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/README.md",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "deny",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/.env",
+      "rule": "no_env"
+    },
+    {
+      "verdict": "permit",
+      "action": "shell:exec",
+      "resource": "wc",
+      "rule": "shell_commands"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/hello.py",
+      "rule": "project_read"
+    },
+    {
+      "verdict": "permit",
+      "action": "fs:read",
+      "resource": "/work/7ba602d960cb/project/util.py",
+      "rule": "project_read"
+    }
+  ],
+  "warm_task_ms": {
+    "n": 20,
+    "p50": 351.05,
+    "p90": 354.5,
+    "min": 347.7,
+    "max": 377.8
+  },
+  "warm_box_ms": {
+    "p50": 82.95,
+    "p90": 83.7
+  },
+  "suspend_ms": 2783.7,
+  "auto_resume_task_ms": 924.2,
+  "auto_resume_denied": [
+    "no_deletes",
+    "no_env",
+    "no_env"
+  ],
+  "terminate_call_ms": 302.6
+}

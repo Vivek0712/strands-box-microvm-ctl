@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Strands Box playground behind CloudFront. The page is a static file in a private S3 bucket (origin
+  access control); /api/* goes to a Lambda Function URL that runs the playground API over microvm-ctl.
+  The Function URL answers only requests carrying the secret header CloudFront adds, and every API call
+  needs the playground key.
+
+Parameters:
+  PlaygroundKey:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: The key the page asks for before it calls the API.
+  OriginSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 24
+    Description: Random value CloudFront sends to the Function URL in x-origin-verify.
+  CodeBucket:
+    Type: String
+    Description: Bucket holding the Lambda zip (the microvm-ctl artifact bucket works).
+  CodeKey:
+    Type: String
+  ImageName:
+    Type: String
+    Default: strands-box
+  VmExecutionRoleArn:
+    Type: String
+    Description: The execution role the strands-box microVMs run with (passed to RunMicrovm).
+  MaxVms:
+    Type: Number
+    Default: 8
+
+Resources:
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: drive-strands-box-microvms
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Lifecycle
+                Effect: Allow
+                Action:
+                  - lambda:RunMicrovm
+                  - lambda:GetMicrovm
+                  - lambda:ListMicrovms
+                  - lambda:SuspendMicrovm
+                  - lambda:ResumeMicrovm
+                  - lambda:TerminateMicrovm
+                  - lambda:CreateMicrovmAuthToken
+                  - lambda:GetMicrovmImage
+                  - lambda:ListMicrovmImages
+                  - lambda:ListMicrovmImageVersions
+                  - lambda:GetMicrovmImageVersion
+                Resource: "*"
+              - Sid: PassConnectors
+                Effect: Allow
+                Action: lambda:PassNetworkConnector
+                Resource: "arn:aws:lambda:*:aws:network-connector:aws-network-connector:*"
+              - Sid: PassVmRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Ref VmExecutionRoleArn
+              - Sid: Quotas
+                Effect: Allow
+                Action: servicequotas:GetServiceQuota
+                Resource: "*"
+
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Architectures: [arm64]
+      Handler: server.lambda_handler
+      Timeout: 60
+      MemorySize: 512
+      Role: !GetAtt ApiRole.Arn
+      Code: { S3Bucket: !Ref CodeBucket, S3Key: !Ref CodeKey }
+      Environment:
+        Variables:
+          MVM_REGION: !Ref AWS::Region
+          MVM_EXECUTION_ROLE_ARN: !Ref VmExecutionRoleArn
+          SBX_IMAGE: !Ref ImageName
+          SBX_MAX_VMS: !Ref MaxVms
+          SBX_MAX_TASKS: "128"
+          SBX_STATIC: /var/task/static
+          SBX_BOX_FILES: /var/task/box
+          SBX_RESULTS: /var/task/results
+          PLAYGROUND_KEY: !Ref PlaygroundKey
+          ORIGIN_SECRET: !Ref OriginSecret
+
+  ApiUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref ApiFunction
+      AuthType: NONE
+
+  ApiUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  SiteOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-site"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Strands Box playground
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !Ref SiteOac
+            S3OriginConfig: { OriginAccessIdentity: "" }
+          - Id: api
+            DomainName: !Select [2, !Split ["/", !GetAtt ApiUrl.FunctionUrl]]
+            OriginCustomHeaders:
+              - HeaderName: x-origin-verify
+                HeaderValue: !Ref OriginSecret
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginReadTimeout: 60
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6          # CachingOptimized
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad          # CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AllViewerExceptHostHeader
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+Outputs:
+  Url:
+    Value: !Sub "https://${Distribution.DomainName}"
+  SiteBucket:
+    Value: !Ref SiteBucket
+  DistributionId:
+    Value: !Ref Distribution

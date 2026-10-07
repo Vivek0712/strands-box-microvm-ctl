@@ -1,0 +1,64 @@
+{
+  "scenario": "density",
+  "image": "strands-box",
+  "region": "us-east-1",
+  "date": "2026-10-08",
+  "microvm_id": "microvm-7d300e7e-bdbd-30e4-a375-fb347c2d7e0a",
+  "memory_mib": 1024,
+  "rows": [
+    {
+      "boxes": 1,
+      "wall_ms": 387.1,
+      "vm_wall_ms": 124.2,
+      "box_p50_ms": 121.7,
+      "box_max_ms": 121.7,
+      "boxes_per_s": 8.1,
+      "correct": 1
+    },
+    {
+      "boxes": 2,
+      "wall_ms": 397.7,
+      "vm_wall_ms": 135.7,
+      "box_p50_ms": 130.7,
+      "box_max_ms": 133.2,
+      "boxes_per_s": 14.7,
+      "correct": 2
+    },
+    {
+      "boxes": 4,
+      "wall_ms": 444.5,
+      "vm_wall_ms": 177.2,
+      "box_p50_ms": 168.14999999999998,
+      "box_max_ms": 173.5,
+      "boxes_per_s": 22.6,
+      "correct": 4
+    },
+    {
+      "boxes": 8,
+      "wall_ms": 922.6,
+      "vm_wall_ms": 350.6,
+      "box_p50_ms": 339.5,
+      "box_max_ms": 343.9,
+      "boxes_per_s": 22.8,
+      "correct": 8
+    },
+    {
+      "boxes": 16,
+      "wall_ms": 1227.7,
+      "vm_wall_ms": 704.5,
+      "box_p50_ms": 641.8499999999999,
+      "box_max_ms": 694.3,
+      "boxes_per_s": 22.7,
+      "correct": 16
+    },
+    {
+      "boxes": 32,
+      "wall_ms": 2479.2,
+      "vm_wall_ms": 1444.9,
+      "box_p50_ms": 1302.5,
+      "box_max_ms": 1422.5,
+      "boxes_per_s": 22.1,
+      "correct": 32
+    }
+  ]
+}

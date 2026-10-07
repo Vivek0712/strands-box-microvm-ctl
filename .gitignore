@@ -1,0 +1,9 @@
+.venv/
+.env.mvm
+.playground-secrets
+media/video/
+build/box-src/
+__pycache__/
+*.pyc
+image/microvm_hooks.py
+image/box-core/
