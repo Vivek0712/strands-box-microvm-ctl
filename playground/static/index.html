@@ -828,6 +828,8 @@ async function loadUsage() {
 }
 function renderUsage(u) {
   const t = u.totals, out = $("#usage-body"); out.replaceChildren();
+  if (u.backfilled && u.backfilled.length) out.append(h("div", { class: "callout", style: "margin-bottom:16px" },
+    `Includes a backfill for ${u.backfilled.map((w) => w.replace("T", " ").replace(/:\d\dZ/g, " UTC").replace("..", " to ").replace("T", " ")).join(", ")}, before these counters existed: visitors, page loads, countries, tasks, fan-outs, leases and launches rebuilt from AWS WAF request samples and the microVM launch history. Policy decisions, denials and commands from that window are not in it.`));
   const pct = t.deny_rate === null ? "-" : (t.deny_rate * 100).toFixed(1) + "%";
   out.append(h("div", { class: "card" }, h("div", { class: "body" },
     h("p", { class: "chart-title", text: "People" }), h("p", { class: "chart-sub", text: "one count per browser" }),

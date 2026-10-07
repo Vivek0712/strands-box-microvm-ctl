@@ -143,4 +143,5 @@ class Stats:
             "commands": top("cmd#", 10),
             "countries": top("country#", 10),
             "last_24h": hours,
+            "backfilled": sorted(k[len("backfill#"):] for k in raw if k.startswith("backfill#")),
         }
