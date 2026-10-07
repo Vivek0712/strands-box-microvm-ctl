@@ -9,7 +9,7 @@ Parameters:
   PlaygroundKey:
     Type: String
     NoEcho: true
-    MinLength: 16
+    MinLength: 12
     Description: The key the page asks for before it calls the API.
   OriginSecret:
     Type: String
