@@ -189,6 +189,12 @@ details.disclose pre { margin: 0; padding: 10px 12px; border-top: 1px solid var(
 .tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 6px 24px rgba(0,0,0,.14); border-radius: 8px; padding: 7px 9px; font-size: 12px; opacity: 0; transition: opacity .08s; max-width: 260px; }
 .tip b { display: block; font-size: 12px; } .tip span { color: var(--ink-2); }
 
+/* footer */
+footer.credit { max-width: 1320px; margin: 8px auto 0; padding: 18px 20px 28px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; color: var(--ink-2); font-size: 13px; }
+footer.credit b { color: var(--ink); font-weight: 600; }
+footer.credit nav { display: flex; gap: 14px; flex-wrap: wrap; }
+@media (max-width: 640px) { footer.credit { padding-left: 16px; padding-right: 16px; } }
+
 /* toast + dialog */
 .toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px)); }
 .toast { background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent); border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16); font-size: 13px; overflow-wrap: anywhere; }
@@ -394,6 +400,14 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 1
   <div class="card"><div class="body"><div class="table-wrap"><table class="t" id="trace-table"><thead><tr><th>Time</th><th>Service</th><th>Operation</th><th>Status</th><th style="text-align:right">ms</th></tr></thead><tbody></tbody></table></div></div></div>
 </section>
 </main>
+<footer class="credit">
+  <span>Developed by <b>Vivek Raja</b> - AWS AI Hero</span>
+  <nav aria-label="Project links">
+    <a href="https://github.com/Vivek0712/strands-box-microvm-ctl" target="_blank" rel="noopener">strands-box-microvm-ctl</a>
+    <a href="https://github.com/Vivek0712/microvm-ctl" target="_blank" rel="noopener">microvm-ctl</a>
+    <a href="https://github.com/strands-agents/box" target="_blank" rel="noopener">Strands Box</a>
+  </nav>
+</footer>
 
 <div class="tip" id="tip" role="tooltip"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
