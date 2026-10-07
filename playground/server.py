@@ -42,6 +42,11 @@ from microvm import EndpointClient, FleetManager, FleetMonitor, ImageBuilder, Pl
 from microvm.fleet import Fleet, IdlePolicy
 from microvm.lease import Lease, LeasePlanRejected, LeasePolicy
 
+try:
+    from stats import Stats, command_name
+except ImportError:  # run as a module from the repo root
+    from playground.stats import Stats, command_name
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 IMAGE = os.environ.get("SBX_IMAGE", "strands-box")
@@ -51,7 +56,7 @@ LAUNCHES_PER_HOUR = int(os.environ.get("SBX_LAUNCHES_PER_HOUR", "0"))
 ALLOW_MODEL = os.environ.get("SBX_ALLOW_MODEL", "1") == "1"
 MAX_STEPS, MAX_STEP_CHARS, MAX_PROMPT_CHARS = 12, 300, 500
 MAX_FILES, MAX_FILE_CHARS = 5, 8192
-PUBLIC_ROUTES = {("GET", "/api/policy"), ("GET", "/api/benchmarks")}
+PUBLIC_ROUTES = {("GET", "/api/policy"), ("GET", "/api/benchmarks"), ("GET", "/api/stats"), ("POST", "/api/hello")}
 BASELINE_MIB = int(os.environ.get("SBX_BASELINE_MIB", "1024"))
 IDLE = IdlePolicy(max_idle=int(os.environ.get("SBX_IDLE_S", "300")), suspended_for=900, auto_resume=True)
 MAX_DURATION = int(os.environ.get("SBX_MAX_DURATION_S", "1800"))
@@ -112,6 +117,7 @@ class Playground:
         self.trace = Trace()
         self.trace.attach(self.fm.api)
         self.fleet = Fleet(self.fm, IMAGE, idle_policy=IDLE, max_duration=MAX_DURATION)
+        self.stats = Stats()
         self._clients: dict = {}
         self._lock = threading.Lock()
         self._rr = 0
@@ -200,6 +206,27 @@ class Playground:
             raise ValueError("add at least one step, or a prompt")
         return out
 
+    def record_box(self, r: dict, steps=None, prompt=None) -> None:
+        """Fold one box's result into the usage counters."""
+        if not isinstance(r, dict):
+            return
+        decisions = r.get("decisions") or []
+        denied = [d for d in decisions if d.get("verdict") == "deny"]
+        extra = {"decisions": len(decisions), "permits": len(decisions) - len(denied), "denials": len(denied),
+                 "box_ms_total": round(r.get("box_ms") or 0)}
+        for d in denied:
+            rule = (d.get("rule") or "unknown")[:40]
+            extra[f"rule#{rule}"] = extra.get(f"rule#{rule}", 0) + 1
+        for step in steps or []:
+            name = command_name(step)
+            if name:
+                extra[f"cmd#{name}"] = extra.get(f"cmd#{name}", 0) + 1
+        if prompt:
+            extra["model_tasks"] = 1
+        self.stats.event("boxes", 1, **extra)
+        if r.get("exit_code") == 0:
+            self.stats.minimum("fastest_box_ms", r.get("box_ms"))
+
     def active_count(self) -> int:
         return sum(1 for v in self.vms() if v["state"] in ("PENDING", "RUNNING", "SUSPENDING", "SUSPENDED"))
 
@@ -239,6 +266,7 @@ class Playground:
         with ThreadPoolExecutor(max_workers=min(n, 8)) as pool:
             vms = list(pool.map(lambda _i: self.fm.run(IMAGE, idle_policy=IDLE, max_duration=MAX_DURATION),
                                 range(n)))
+        self.stats.event("vms_launched", len(vms))
         return 200, {"launched": [v.microvm_id for v in vms], "ms": round((time.time() - t0) * 1000, 1),
                      "capped": n < int(body.get("count", 1))}
 
@@ -288,6 +316,8 @@ class Playground:
         payload = self.check_task(body)
         microvm_id = self.own(body["microvm_id"]) if body.get("microvm_id") else self.pick()
         status, result, ms = self.call_vm(microvm_id, "POST", "/task", payload, timeout=180)
+        self.stats.event("tasks")
+        self.record_box(result, payload.get("steps"), payload.get("prompt"))
         return status, {"microvm_id": microvm_id, "request_ms": ms, "result": result}
 
     def dispatch(self, _q, body):
@@ -300,6 +330,10 @@ class Playground:
                                       client_factory=lambda vid: self.client(vid))
         wall = (time.time() - t0) * 1000
         self.trace.add("microvm-ctl", f"Fleet.dispatch x{n}", 200, wall)
+        self.stats.event("fanouts")
+        self.stats.event("tasks", n)
+        for r in results:
+            self.record_box(r.get("body"), bodies[r["index"]]["steps"])
         rows, by_vm, by_rule = [], {}, {}
         decisions = 0
         for r in results:
@@ -355,6 +389,9 @@ class Playground:
             vms = self.fm.lease_many(IMAGE, leases, tasks, policy, baseline_mib=BASELINE_MIB)
         except LeasePlanRejected as e:
             return 409, {"error": str(e)}
+        self.stats.event("leases", len(vms))
+        self.stats.event("vms_launched", len(vms))
+        self.stats.event("boxes_leased", len(vms) * boxes)
         return 200, {"run_id": run_id, "launched": [v.microvm_id for v in vms],
                      "ms": round((time.time() - t0) * 1000, 1),
                      "plan": self.fm.plan(shards, BASELINE_MIB, policy).summary()}
@@ -405,6 +442,8 @@ class Playground:
             ("POST", "fleet"): self.fleet_action, ("POST", "task"): self.task, ("POST", "dispatch"): self.dispatch,
             ("GET", "plan"): self.plan, ("POST", "lease"): self.lease, ("GET", "jobs"): self.jobs,
             ("GET", "policy"): self.policy, ("GET", "benchmarks"): self.benchmarks, ("GET", "trace"): self.trace_items,
+            ("GET", "stats"): lambda _q, _b: (200, self.stats.summary()),
+            ("POST", "hello"): lambda _q, _b: (200, {"ok": True}),
         }
         try:
             if len(parts) == 1 and (method, parts[0]) in routes:
@@ -421,6 +460,7 @@ class Playground:
         except ValueError as e:
             return 400, {"error": str(e)}
         except PermissionError as e:
+            self.stats.add({"budget_refusals" if "launches" in str(e) else "foreign_vm_attempts": 1})
             return 429 if "launches" in str(e) else 403, {"error": str(e)}
         except Exception as e:  # surface AWS and endpoint errors to the page as they are
             return 502, {"error": f"{type(e).__name__}: {e}"}
@@ -434,6 +474,18 @@ def playground() -> Playground:
     if _PLAYGROUND is None:
         _PLAYGROUND = Playground()
     return _PLAYGROUND
+
+
+def count_visit(method: str, path: str, headers: dict, authed: bool) -> None:
+    """Visitor and key-user counts, one per browser, from the page's random x-visitor id."""
+    st = playground().stats
+    vid = headers.get("x-visitor")
+    if (method, path) == ("POST", "/api/hello"):
+        country = (headers.get("cloudfront-viewer-country") or "")[:2].upper()
+        st.event("page_loads", **({f"country#{country}": 1} if country.isalpha() and len(country) == 2 else {}))
+        st.visitor(vid, "visitor")
+    if authed and (method, path) not in PUBLIC_ROUTES:
+        st.visitor(vid, "key_user")
 
 
 def authorized(headers: dict) -> bool:
@@ -472,7 +524,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, f.read(), ctype)
         headers = {k.lower(): v for k, v in self.headers.items()}
         if (method, u.path) not in PUBLIC_ROUTES and not authorized(headers):
+            if headers.get("x-playground-key"):
+                playground().stats.add({"wrong_keys": 1})
             return self._send(401, {"error": "missing or wrong playground key"})
+        count_visit(method, u.path, headers, authorized(headers))
         body = {}
         if method == "POST":
             n = int(self.headers.get("Content-Length") or 0)
@@ -499,12 +554,15 @@ def lambda_handler(event, _context):
         return {"statusCode": 403, "headers": {"content-type": "application/json"},
                 "body": json.dumps({"error": "call the playground through its CloudFront URL"})}
     if (method, path) not in PUBLIC_ROUTES and not authorized(headers):
+        if headers.get("x-playground-key"):
+            playground().stats.add({"wrong_keys": 1})
         return {"statusCode": 401, "headers": {"content-type": "application/json"},
                 "body": json.dumps({"error": "missing or wrong playground key"})}
     raw = event.get("body") or ""
     if event.get("isBase64Encoded"):
         raw = base64.b64decode(raw).decode()
     body = json.loads(raw) if raw else {}
+    count_visit(method, path, headers, authorized(headers))
     status, payload = playground().api(method, path, parse_qs(event.get("rawQueryString", "")), body)
     return {"statusCode": status, "headers": {"content-type": "application/json", "cache-control": "no-store"},
             "body": json.dumps(payload, default=str)}

@@ -25,7 +25,7 @@ else
   pip install --quiet --target "$build" --no-deps "microvm-ctl>=0.4" >/dev/null
 fi
 rm -rf "$build"/boto3 "$build"/botocore "$build"/s3transfer   # the runtime ships them
-cp "$here/playground/server.py" "$build/"
+cp "$here/playground/server.py" "$here/playground/stats.py" "$build/"
 mkdir -p "$build/static" "$build/box" "$build/results"
 cp "$here/playground/static/index.html" "$build/static/"
 cp "$here/image/box/policy.dw" "$here/image/box/box.toml.tmpl" "$build/box/"

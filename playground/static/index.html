@@ -235,6 +235,7 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 1
     <button role="tab" data-view="leases">Leases</button>
     <button role="tab" data-view="policy">Policy</button>
     <button role="tab" data-view="bench">Benchmarks</button>
+    <button role="tab" data-view="usage">Usage</button>
     <button role="tab" data-view="activity">Activity</button>
   </nav>
 </header>
@@ -242,7 +243,7 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 1
 <main>
 <div class="callout" id="locked" style="display:none;margin-bottom:16px">
   <div class="row" style="justify-content:space-between">
-    <span>This playground launches real microVMs in an AWS account, so running anything needs a key. The Benchmarks and Policy tabs are open to everyone.</span>
+    <span>This playground launches real microVMs in an AWS account, so running anything needs a key. The Benchmarks, Usage and Policy tabs are open to everyone.</span>
     <button class="btn sm primary" id="unlock">Enter key</button>
   </div>
 </div>
@@ -394,6 +395,12 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 1
   <div id="bench-body"><div class="empty-state"><span class="spin"></span></div></div>
 </section>
 
+<!-- USAGE -->
+<section class="view" id="view-usage">
+  <p class="lede">How this playground has been used, counted on the server since it went live. Only totals are kept: no IP address, key, prompt, file or full command, just the first word of each step and the rule that decided it.</p>
+  <div id="usage-body"><div class="empty-state"><span class="spin"></span></div></div>
+</section>
+
 <!-- ACTIVITY -->
 <section class="view" id="view-activity">
   <p class="lede">Every AWS API call and endpoint request this playground made, newest first.</p>
@@ -467,9 +474,14 @@ function setLocked(v) {
   locked = v; $("#locked").style.display = v ? "" : "none";
 }
 $("#unlock").onclick = async () => { if (await askKey()) { setLocked(false); await loadOverview(); show(current === "bench" ? "run" : current); } };
+function visitorId() {
+  let v = store.get("visitor", "");
+  if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); store.set("visitor", v); }
+  return v;
+}
 async function api(method, path, body, opts = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const headers = { "content-type": "application/json" };
+    const headers = { "content-type": "application/json", "x-visitor": visitorId() };
     const key = store.get("key", "");
     if (key) headers["x-playground-key"] = key;
     const r = await fetch("/api/" + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
@@ -506,6 +518,7 @@ function show(view) {
   if (view === "policy") loadPolicy();
   if (view === "bench") loadBench();
   if (view === "activity") loadTrace();
+  if (view === "usage") loadUsage();
   if (view === "leases") planLeases();
 }
 $$("nav.tabs button").forEach((b) => b.onclick = () => show(b.dataset.view));
@@ -807,6 +820,47 @@ async function loadPolicy() {
   catch (e) { toast(e.message, "bad"); }
 }
 
+/* usage */
+const nfmt = (v) => v === null || v === undefined ? "-" : Number(v).toLocaleString("en-US");
+async function loadUsage() {
+  try { renderUsage(await api("GET", "stats", null, { quiet: true })); }
+  catch (e) { $("#usage-body").replaceChildren(h("div", { class: "callout bad", text: e.message })); }
+}
+function renderUsage(u) {
+  const t = u.totals, out = $("#usage-body"); out.replaceChildren();
+  const pct = t.deny_rate === null ? "-" : (t.deny_rate * 100).toFixed(1) + "%";
+  out.append(h("div", { class: "card" }, h("div", { class: "body" },
+    h("p", { class: "chart-title", text: "People" }), h("p", { class: "chart-sub", text: "one count per browser" }),
+    h("div", { class: "stats" },
+      stat("Visitors", nfmt(t.visitors), `${nfmt(t.page_loads)} page loads`),
+      stat("Entered the key", nfmt(t.key_users), t.visitors ? `${Math.round(100 * t.key_users / Math.max(t.visitors, 1))}% of visitors` : ""),
+      stat("Wrong keys", nfmt(t.wrong_keys), "refused with 401"),
+      stat("Launch budget hits", nfmt(t.budget_refusals), "the hourly cap said no"),
+      stat("Foreign VM ids", nfmt(t.foreign_vm_attempts), "refused with 403")))));
+  out.append(h("div", { class: "card", style: "margin-top:16px" }, h("div", { class: "body" },
+    h("p", { class: "chart-title", text: "What ran" }), h("p", { class: "chart-sub", text: "every box is a fresh sandbox inside a Lambda MicroVM" }),
+    h("div", { class: "stats" },
+      stat("Boxes", nfmt(t.boxes), `${nfmt(t.tasks)} tasks, ${nfmt(t.model_tasks)} with the model`),
+      stat("Policy decisions", nfmt(t.decisions), `${nfmt(t.permits)} permitted`),
+      stat("Denials", nfmt(t.denials), `${pct} of all decisions`),
+      stat("Fastest box", t.fastest_box_ms ? fmtMs(t.fastest_box_ms) : "-", "create, run, tear down"),
+      stat("Sandbox time", t.box_seconds >= 60 ? (t.box_seconds / 60).toFixed(1) + " min" : t.box_seconds + " s", "summed over every box"),
+      stat("microVMs launched", nfmt(t.vms_launched), `${nfmt(t.fanouts)} fan-outs, ${nfmt(t.leases)} leases`)))));
+  const g = h("div", { class: "grid-2", style: "margin-top:16px" }); out.append(g);
+  const card = (title, sub, rows, fmt, empty) => {
+    const c = h("div", { class: "chart" });
+    const el = h("div", { class: "card" }, h("div", { class: "body" }, h("p", { class: "chart-title", text: title }), h("p", { class: "chart-sub", text: sub }), c));
+    requestAnimationFrame(() => rows.length ? barChart(c, rows.map((r) => r[0]), rows.map((r) => r[1]), { fmt }) : c.append(h("p", { class: "hint", text: empty })));
+    return el;
+  };
+  g.append(card("Rules that said no", "denials by the policy rule that decided them", u.denials_by_rule, (v) => nfmt(v) + " denials", "No denials yet."));
+  g.append(card("Commands people tried", "first word of each scripted step", u.commands, (v) => nfmt(v) + " times", "No commands yet."));
+  const hrs = u.last_24h, hc = h("div", { class: "chart" });
+  g.append(h("div", { class: "card" }, h("div", { class: "body" }, h("p", { class: "chart-title", text: "Boxes in the last 24 hours" }), h("p", { class: "chart-sub", text: "per hour, UTC" }), hc)));
+  requestAnimationFrame(() => hrs.some((x) => x.boxes) ? lineChart(hc, hrs.map((x) => x.hour), hrs.map((x) => x.boxes), { every: 4, xname: "UTC", yfmt: (v) => nfmt(v) + " boxes", tick: (v) => nfmt(v) }) : hc.append(h("p", { class: "hint", text: "Nothing in the last 24 hours." })));
+  g.append(card("Where visitors are", "country of each page load, from CloudFront", u.countries, (v) => nfmt(v) + " page loads", "No country data yet."));
+}
+
 /* activity */
 async function loadTrace() {
   try {
@@ -859,7 +913,7 @@ function lineChart(el, xs, ys, opt = {}) {
     svg.append(s("text", { x: pad.l - 8, y: y + 4, "text-anchor": "end", class: "axis" }, opt.tick ? opt.tick(v) : +v.toFixed(1)));
   }
   svg.append(grid, s("line", { x1: pad.l, x2: W - pad.r, y1: H - pad.b, y2: H - pad.b, class: "baseline" }));
-  xs.forEach((xv, i) => svg.append(s("text", { x: px(i), y: H - pad.b + 18, "text-anchor": "middle", class: "axis" }, String(xv))));
+  xs.forEach((xv, i) => { if (!opt.every || i % opt.every === 0 || i === xs.length - 1) svg.append(s("text", { x: px(i), y: H - pad.b + 18, "text-anchor": "middle", class: "axis" }, String(xv))); });
   if (opt.xlabel) svg.append(s("text", { x: (pad.l + W - pad.r) / 2, y: H - 2, "text-anchor": "middle", class: "axis" }, opt.xlabel));
   svg.append(s("path", { d: ys.map((v, i) => (i ? "L" : "M") + px(i) + "," + py(v)).join(" "), fill: "none", stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round" }));
   const cross = s("line", { y1: pad.t, y2: H - pad.b, stroke: "var(--line-2)", "stroke-dasharray": "3 3", opacity: 0 });
@@ -926,6 +980,8 @@ function renderBench(b) {
 }
 
 /* boot */
+api("POST", "hello", {}, { quiet: true }).catch(() => {});
+setInterval(() => { if (current === "usage" && !document.hidden) loadUsage(); }, 15000);
 loadOverview().then(() => {
   if (locked) { renderPresets([{ id: "list", label: "List the project", step: "list", expect: "permit" }, { id: "env", label: "Read .env", step: "read:.env", expect: "deny" }]); show("bench"); }
   else show(store.get("tab", "run"));

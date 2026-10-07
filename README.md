@@ -71,7 +71,7 @@ python playground/server.py                            # http://127.0.0.1:8770
 
 ![The playground running a task](https://raw.githubusercontent.com/Vivek0712/awesome-microvm/main/blog/img/playground-box-run.png)
 
-Seven tabs over one API:
+Eight tabs over one API:
 
 - **Run a task:** compose steps from presets (each labelled permit or deny) or type a command, then read every tool call, every policy decision in order, and the box's startup report.
 - **Fleet:** launch, scale, suspend, resume, terminate, drain, and look inside a VM.
@@ -79,6 +79,7 @@ Seven tabs over one API:
 - **Leases:** the plan sentence as you type, then `lease_many` and a live job table.
 - **Policy:** the two files that define every box.
 - **Benchmarks:** the results above, with tooltips and tables.
+- **Usage:** how the playground has been used, kept in a DynamoDB table: visitors, people who entered the key, wrong keys, boxes run, policy decisions and denials by rule, the commands people tried (first word only), the fastest box, launches refused by the hourly budget, and page loads by country. Only totals are stored: no IP, key, prompt, file or full command.
 - **Activity:** every AWS call and endpoint request.
 
 Guardrails apply whatever the page asks for, set by environment variables documented at the top of `playground/server.py`: VMs at once, launches per rolling hour (counted from `ListMicrovms`, so it holds across Lambda instances), lifetime cap, idle suspend, fan-out size, step, prompt and file size caps, and a check that every VM id in a request belongs to the image.
@@ -87,7 +88,7 @@ Guardrails apply whatever the page asks for, set by environment variables docume
 
 ### Behind CloudFront
 
-`source .env.mvm && ./infra/deploy.sh` deploys it; mine runs at [d27duseaq87rqu.cloudfront.net](https://d27duseaq87rqu.cloudfront.net). Anyone can open the page and read the Benchmarks and Policy tabs. Everything else needs the playground key, which `deploy.sh` generates into `.playground-secrets` on first deploy.
+`source .env.mvm && ./infra/deploy.sh` deploys it; mine runs at [d27duseaq87rqu.cloudfront.net](https://d27duseaq87rqu.cloudfront.net). Anyone can open the page and read the Benchmarks, Usage and Policy tabs. Everything else needs the playground key, which `deploy.sh` generates into `.playground-secrets` on first deploy.
 
 | Layer | Guardrail | Checked against the deployment |
 |---|---|---|

@@ -60,6 +60,18 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
 
+  StatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      SSESpecification: { SSEEnabled: true }
+
   ApiRole:
     Type: AWS::IAM::Role
     Properties:
@@ -103,6 +115,10 @@ Resources:
                 Effect: Allow
                 Action: servicequotas:GetServiceQuota
                 Resource: "*"
+              - Sid: UsageCounters
+                Effect: Allow
+                Action: [dynamodb:UpdateItem, dynamodb:PutItem, dynamodb:Query]
+                Resource: !GetAtt StatsTable.Arn
 
   ApiFunction:
     Type: AWS::Lambda::Function
@@ -129,6 +145,7 @@ Resources:
           SBX_RESULTS: /var/task/results
           PLAYGROUND_KEY: !Ref PlaygroundKey
           ORIGIN_SECRET: !Ref OriginSecret
+          SBX_STATS_TABLE: !Ref StatsTable
 
   ApiUrl:
     Type: AWS::Lambda::Url
