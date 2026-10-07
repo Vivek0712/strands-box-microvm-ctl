@@ -30,6 +30,7 @@ import hmac
 import json
 import os
 import random
+import re
 import sys
 import threading
 import time
@@ -476,8 +477,14 @@ def playground() -> Playground:
     return _PLAYGROUND
 
 
+BOTS = re.compile(r"bot|preview|facebookexternalhit|slack|discord|whatsapp|telegram|linkedin|twitter|embed|crawler|"
+                  r"spider|curl|python|headless|go-http|okhttp", re.I)
+
+
 def count_visit(method: str, path: str, headers: dict, authed: bool) -> None:
     """Visitor and key-user counts, one per browser, from the page's random x-visitor id."""
+    if BOTS.search(headers.get("user-agent", "")):
+        return  # headless browsers, scripts and link-preview bots are not visitors (backfill.py drops them too)
     st = playground().stats
     vid = headers.get("x-visitor")
     if (method, path) == ("POST", "/api/hello"):
